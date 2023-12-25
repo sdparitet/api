@@ -1,0 +1,22 @@
+# global
+/.git
+/.idea
+/.hub
+/.vscode
+*.bak
+/qodana*
+
+# code
+/node_modules/
+/dist/
+/.env.development
+/.env.production
+/.env.docker
+/logs
+/*.log
+
+# Exceptions
+/src/users/dto/hash-password-dto.ts
+/.prettierrc
+/_template/
+/_bckp/

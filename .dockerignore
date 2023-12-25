@@ -1,0 +1,14 @@
+dist
+node_modules
+*.md
+.env.de*
+.env.ex*
+.prettierrc
+.git
+.gitignore
+.idea
+.vs
+.vscode
+.hub
+docker-compose*
+Dockerfile
