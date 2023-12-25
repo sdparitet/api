@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  kpi:
+    image: sdparitet/grafana.kpi_input:latest
+    container_name: kpi
+    env_file:
+      - .env.kpi
+    volumes:
+      - kpi:/usr/share/nginx
+    ports:
+      - "3201:3201"
+    depends_on:
+     - api
+    restart: always
+
+  api:
+    image: sdparitet/grafana.api:latest
+    container_name: api
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+      - "services.paritet.su notif.services.paritet.su:192.168.10.25"
+    env_file:
+      - .env.api
+    volumes:
+      - api:/app/dist
+    ports:
+      - "3250:3250"
+    restart: always
+
+volumes:
+  kpi:
+  api:
