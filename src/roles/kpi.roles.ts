@@ -1,4 +1,4 @@
 
-export const KpiRoles = {
-   USER: 'KPI_USER',
+export const Kpi_Roles = {
+   KPI_USER: 'KPI_User',
 } as const

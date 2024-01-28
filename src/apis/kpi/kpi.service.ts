@@ -1,26 +1,28 @@
 import { Injectable } from "@nestjs/common";
-import { InjectModel } from "@nestjs/sequelize";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository, In } from "typeorm";
+import { Request } from 'express';
 
-import { KPIGroup } from './models/kpi-group.model';
-import { KPIProduct } from './models/kpi-product.model';
-import { KPIGetRequestDto } from './dto/get-request-dto';
-import { KPI } from './models/kpi.model';
-import { KPIPostRequestDto } from './dto/post-request-dto';
-import { Op } from "sequelize";
+import { KPI_GetRequestDto } from './dto/get-request-dto';
+import { KPI_PostRequestDto } from './dto/post-request-dto';
+import { KPI_Group } from "~kpi/entity/group.entity";
+import { KPI_Product } from "~kpi/entity/product.entity";
+import { KPI_Kpi } from '~kpi/entity/kpi.entity';
+import { JwtService } from '@nestjs/jwt';
+import { getTokenData } from '~root/src/apis/helpers';
 
 @Injectable()
-export class KpiService {
+export class Kpi_Service {
    constructor(
-      @InjectModel(KPIGroup) private groupRepository: typeof KPIGroup,
-      @InjectModel(KPIProduct) private productRepository: typeof KPIProduct,
-      @InjectModel(KPI) private kpiRepository: typeof KPI,
+      @InjectRepository(KPI_Kpi)
+      private kpiRepository: Repository<KPI_Kpi>,
+      @InjectRepository(KPI_Group)
+      private groupRepository: Repository<KPI_Group>,
+      @InjectRepository(KPI_Product)
+      private productRepository: Repository<KPI_Product>,
    ) { }
 
    async up() {
-
-      await this.productRepository.truncate()
-      await this.groupRepository.truncate()
-
       const groups = {
          'Финансы': [
             {unit: 'тыс. рублей', name: 'Общие затраты на ремонт и обслуживание оборудования в месяц'},
@@ -51,34 +53,39 @@ export class KpiService {
       }
 
       for (const g of Object.keys(groups)) {
-         await this.groupRepository.create({ name: g })
-            .then(async gres => {
-               await this.productRepository.bulkCreate(groups[g].map(p => ({...p, group_id: gres.id})))
-            })
+         await this.groupRepository.save(this.groupRepository.create({ name: g, products: groups[g] }))
       }
       return true
    }
 
-   async getGroups() {
-      return await this.groupRepository.findAll({ include: { all: true } })
+   async getGroups(req: Request) {
+      const userData = getTokenData(req)
+      return await this.groupRepository.find({
+         where: {
+            role: In(userData.userRoles || [])
+         }
+      })
    }
 
-   async getGroup(dto: KPIGetRequestDto) {
-      return await this.groupRepository.findOne({ where: { id: dto.group_id }, include: { all: true } })
-   }
-
-   async getKPI(dto: KPIGetRequestDto) {
-      const group = await this.groupRepository.findOne({ where: { id: dto.group_id }, include: { all: true } })
+   async getKPI(dto: KPI_GetRequestDto, _: Request) {
+      const group = await this.groupRepository.findOne({ where: { id: dto.group_id } })
       if (group) {
-         return await this.kpiRepository.findAll({ where: { product: { [Op.in]: group.products.map(p => p.id) } }, include: { all: true } })
+         return await this.productRepository.find({where: {group: group}, relations: {kpis: true}})
       }
       return []
    }
 
-   async setKPI(dto: Array<KPIPostRequestDto>) {
+   async setKPI(dto: Array<KPI_PostRequestDto>, _: Request) {
+      const upsert: KPI_Kpi[] = []
       for (const k of dto) {
-         await this.kpiRepository.upsert(k)
+         const kpi = new KPI_Kpi()
+         kpi.id = k.id >= 0 ? k.id : undefined
+         kpi.date = k.date
+         kpi.value = k.value
+         kpi.product = await this.productRepository.findOneBy({id: k.product})
+         upsert.push(kpi)
       }
+      await this.kpiRepository.upsert(upsert, ['date', 'product'])
    }
 
 }

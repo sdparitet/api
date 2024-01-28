@@ -17,6 +17,16 @@
     "strictBindCallApply": false,
     "forceConsistentCasingInFileNames": false,
     "noFallthroughCasesInSwitch": false,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+
+    "paths": {
+      "~root/*"     : ["./*"],
+      "~roles/*"    : ["src/roles/*"],
+      "~guards/*"   : ["src/guards/*"],
+      "~utils/*"    : ["src/utils/*"],
+
+      "~kpi/*"        : ["src/apis/kpi/*"],
+    }
+
   }
 }

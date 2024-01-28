@@ -2,8 +2,8 @@
 /**
  * @param {number} group_id
  */
-export class KPIGetRequestDto {
-   constructor(model: KPIGetRequestDto) {
+export class KPI_GetRequestDto {
+   constructor(model: KPI_GetRequestDto) {
       this.group_id = model.group_id
    }
 

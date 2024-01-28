@@ -10,7 +10,7 @@
 /node_modules/
 /dist/
 /.env.development
-/.env.production
+/.env.api
 /.env.docker
 /logs
 /*.log

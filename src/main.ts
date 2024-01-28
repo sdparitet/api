@@ -3,8 +3,9 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { JwtService } from "@nestjs/jwt";
 
 import { AppModule } from "./app.module";
-import { AccessGuard } from "./guard/access.guard";
-import { KpiService } from './apis/kpi/kpi.service';
+
+import { AccessGuard } from '~guards/access.guard';
+
 
 async function start() {
    const PORT = process.env.PORT || 3170;
@@ -49,9 +50,11 @@ async function start() {
    const CORSAllowList = [
       "https://sd.paritet.su",
       "https://auth.sd.paritet.su",
+      "http://192.168.10.25",
+      "http://192.168.10.25:80",
+      "http://192.168.10.25:3301",
       "http://localhost:3000",
-      "http://localhost:3130",
-      "http://localhost:3150",
+      "http://localhost:3301",
    ]
    const corsOptionsDelegate = function (req: string, callback: (arg0: null, arg1: any) => void) {
       let corsOptions: { origin: boolean; };
@@ -68,10 +71,9 @@ async function start() {
       origin: corsOptionsDelegate,
    });
 
-
    await app.listen(PORT, () => {
       console.log(`Server on ${PORT}`);
-      // app.get(KpiService).up()
+      // app.get(Kpi_Service).up()
    });
 }
 

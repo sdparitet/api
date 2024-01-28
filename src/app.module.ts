@@ -1,14 +1,10 @@
 import { MiddlewareConsumer, Module, NestModule } from "@nestjs/common";
-import { SequelizeModule } from "@nestjs/sequelize";
-import { ConfigModule } from "@nestjs/config";
-import { JwtService } from "@nestjs/jwt";
+import { JwtService } from '@nestjs/jwt';
+import { ConfigModule } from '@nestjs/config';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
-import { LoggerMiddleware } from "./utils/loggerMiddleware";
-
-import { KpiModule } from './apis/kpi/kpi.module';
-import { KPI } from './apis/kpi/models/kpi.model';
-import { KPIGroup } from './apis/kpi/models/kpi-group.model';
-import { KPIProduct } from './apis/kpi/models/kpi-product.model';
+import { Kpi_Module } from '~kpi/kpi.module';
+import { LoggerMiddleware } from '~utils/loggerMiddleware';
 
 @Module({
    controllers: [],
@@ -17,20 +13,34 @@ import { KPIProduct } from './apis/kpi/models/kpi-product.model';
       ConfigModule.forRoot({
          envFilePath: `.env.${process.env.NODE_ENV}`,
       }),
-      SequelizeModule.forRoot({
-         dialect: "postgres",
+      TypeOrmModule.forRoot({
+         type: 'postgres',
          host: process.env.POSTGRES_HOST,
          port: Number(process.env.POSTGRES_PORT),
          username: process.env.POSTGRES_USER,
          password: process.env.POSTGRES_PASSWORD,
          database: process.env.POSTGRES_DB,
-
-         models: [KPI, KPIGroup, KPIProduct],
-
-         autoLoadModels: true,
-         synchronize: process.env.NODE_ENV !== 'production'
+         // entity: [
+         //    KPI_Kpi, KPI_Group, KPI_Product, KPI_KpiProduct,
+         // ],
+         autoLoadEntities: true,
+         logging: process.env.NODE_ENV !== 'production' ? "all" : ["error"],
+         synchronize: process.env.NODE_ENV !== 'production',
       }),
-      KpiModule,
+      // SequelizeModule.forRoot({
+      //    dialect: "postgres",
+      //    host: process.env.POSTGRES_HOST,
+      //    port: Number(process.env.POSTGRES_PORT),
+      //    username: process.env.POSTGRES_USER,
+      //    password: process.env.POSTGRES_PASSWORD,
+      //    database: process.env.POSTGRES_DB,
+      //
+      //    models: [KPI_Kpi, KPI_Group, KPI_Product, KPI_KpiProduct],
+      //
+      //    autoLoadModels: true,
+      //    synchronize: process.env.NODE_ENV !== 'production'
+      // }),
+      Kpi_Module,
    ],
 })
 export class AppModule implements NestModule {

@@ -1,41 +1,34 @@
-import { Body, Controller, Get, Header, Post, Req, Res } from "@nestjs/common";
-import { ApiBadRequestResponse, ApiExcludeController, ApiResponse } from "@nestjs/swagger";
-import { Roles } from "../../guard/roles-auth.decorator";
-import { KpiService } from "./kpi.service";
-import { KpiRoles } from '../../roles/kpi.roles';
-import { KPIGetRequestDto } from './dto/get-request-dto';
-import { KPIPostRequestDto } from './dto/post-request-dto';
+import { Body, Controller, Get, Header, Post, Req } from "@nestjs/common";
+import { Kpi_Service } from "~kpi/kpi.service";
+import { Roles } from '~guards/roles-auth.decorator';
+import { Kpi_Roles } from '~roles/kpi.roles';
+import { GlobalRoles } from '~roles/All-roles';
+import { KPI_GetRequestDto } from '~kpi/dto/get-request-dto';
+import { KPI_PostRequestDto } from '~kpi/dto/post-request-dto';
+import { Request } from 'express';
 
-@ApiExcludeController()
 @Controller("kpi")
-export class KpiController {
-   constructor(private kpiService: KpiService) { }
+export class Kpi_Controller {
+   constructor(private kpiService: Kpi_Service) { }
 
-   @Roles(KpiRoles.USER)
+   @Roles(Kpi_Roles.KPI_USER, ...Object.values(GlobalRoles))
    @Get("/GetGroups")
    @Header("content-type", "application/json")
-   ggs() {
-      return this.kpiService.getGroups();
+   ggs(@Req() req: Request) {
+      return this.kpiService.getGroups(req);
    }
 
-   @Roles(KpiRoles.USER)
-   @Get("/GetGroup")
+   @Roles(Kpi_Roles.KPI_USER, ...Object.values(GlobalRoles))
+   @Post("/GetKPI")
    @Header("content-type", "application/json")
-   gg(@Body() dto: KPIGetRequestDto) {
-      return this.kpiService.getGroup(dto);
+   gkpi(@Req() req: Request, @Body() dto: KPI_GetRequestDto) {
+      return this.kpiService.getKPI(dto, req);
    }
 
-   @Roles(KpiRoles.USER)
-   @Get("/GetKPI")
-   @Header("content-type", "application/json")
-   gkpi(@Body() dto: KPIGetRequestDto) {
-      return this.kpiService.getKPI(dto);
-   }
-
-   @Roles(KpiRoles.USER)
+   @Roles(Kpi_Roles.KPI_USER, ...Object.values(GlobalRoles))
    @Post("/SetKPI")
    @Header("content-type", "application/json")
-   skpi(@Body() dto: Array<KPIPostRequestDto>) {
-      return this.kpiService.setKPI(dto);
+   skpi(@Req() req: Request, @Body() dto: Array<KPI_PostRequestDto>) {
+      return this.kpiService.setKPI(dto, req);
    }
 }

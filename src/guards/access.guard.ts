@@ -32,8 +32,7 @@ export class AccessGuard implements CanActivate {
             return Errors.TokenExpired(); // Expired
          }
 
-         const user = this.jwtService.verify(token, { secret: process.env.SECRET });
-         req.user = user;
+         const tokenData = this.jwtService.verify(token, { secret: process.env.SECRET });
 
          // Check Roles
          const requiredRoles = this.reflector.getAllAndOverride<string[]>(HAS_ROLES, [
@@ -48,9 +47,9 @@ export class AccessGuard implements CanActivate {
             return true;
          }
 
-         const required = requiredRoles && requiredRoles.length > 0 ? user.userRoles.some((role) => requiredRoles.includes(role)) || false : true;
-         const excluded = excludedRoles && excludedRoles.length > 0 ? !user.userRoles.some((role) => excludedRoles.includes(role)) || false : true;
-         const anyRole = requiredRoles && requiredRoles.length == 0 ? user.userRoles.length > 0 || false : true;
+         const required = requiredRoles && requiredRoles.length > 0 ? tokenData.userRoles.some((role) => requiredRoles.includes(role)) || false : true;
+         const excluded = excludedRoles && excludedRoles.length > 0 ? !tokenData.userRoles.some((role) => excludedRoles.includes(role)) || false : true;
+         const anyRole = requiredRoles && requiredRoles.length == 0 ? tokenData.userRoles.length > 0 || false : true;
 
          if (anyRole && required && excluded) return true
          else return Errors.AccessDenied()

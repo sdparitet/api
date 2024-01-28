@@ -17,10 +17,10 @@ FROM node:20.10.0-alpine as prod
 
 WORKDIR /prod
 
-EXPOSE 5050
+EXPOSE 4242
 
 COPY package-build.json ./package.json
-COPY package-build.json ./package-lock.json
+COPY package-build-lock.json ./package-lock.json
 RUN npm install --silent
 
 COPY --from=build /app/dist ./
