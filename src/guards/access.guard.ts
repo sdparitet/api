@@ -47,8 +47,8 @@ export class AccessGuard implements CanActivate {
             return true;
          }
 
-         const required = requiredRoles && requiredRoles.length > 0 ? tokenData.userRoles.some((role) => requiredRoles.includes(role)) || false : true;
-         const excluded = excludedRoles && excludedRoles.length > 0 ? !tokenData.userRoles.some((role) => excludedRoles.includes(role)) || false : true;
+         const required = requiredRoles && requiredRoles.length > 0 ? tokenData.userRoles.some((role: string) => requiredRoles.includes(role)) || false : true;
+         const excluded = excludedRoles && excludedRoles.length > 0 ? !tokenData.userRoles.some((role: string) => excludedRoles.includes(role)) || false : true;
          const anyRole = requiredRoles && requiredRoles.length == 0 ? tokenData.userRoles.length > 0 || false : true;
 
          if (anyRole && required && excluded) return true

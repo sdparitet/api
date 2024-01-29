@@ -5,7 +5,7 @@ import { Request } from 'express';
 
 import { KPI_GetRequestDto } from './dto/get-request-dto';
 import { KPI_PostRequestDto } from './dto/post-request-dto';
-import { KPI_Group } from "~kpi/entity/group.entity";
+import { KPI_Group, KPI_Group_Dto } from "~kpi/entity/group.entity";
 import { KPI_Product } from "~kpi/entity/product.entity";
 import { KPI_Kpi } from '~kpi/entity/kpi.entity';
 import { JwtService } from '@nestjs/jwt';
@@ -34,9 +34,9 @@ export class Kpi_Service {
             {unit: 'тыс. рублей', name: 'Затраты на внешние заказы контрагентов'},
          ],
          'Бизнес процессы': [
-            {unit: '% технических простоев оборудования', name: 'Отсутствие технических простоев обоудования Цель не более 3%"'},
+            {unit: '% технических простоев оборудования', name: 'Отсутствие технических простоев обоудования Цель не более 3%'},
             {unit: '% своевременного выполнение заявок и ТЗ от КП и ОГТ', name: 'Выполнение заявок'},
-            {unit: '% не проведнных ТО от запланированных в месяц', name: 'Соблюдение плана ТОиР Цель - 0 (2 допускается)"'},
+            {unit: '% не проведнных ТО от запланированных в месяц', name: 'Соблюдение плана ТОиР Цель - 0 (2 допускается)'},
             {unit: 'Наличие нарушений по результатам аудитов, их кол-во или оценка за аудит', name: 'Отсутствие замечаний по внутренним аудитем'},
          ],
          'Безопсность': [
@@ -60,29 +60,52 @@ export class Kpi_Service {
 
    async getGroups(req: Request) {
       const userData = getTokenData(req)
-      return await this.groupRepository.find({
-         where: {
-            role: In(userData.userRoles || [])
-         }
-      })
+      return (await this.groupRepository.find({
+         where: [
+            { roleRead: In(userData.userRoles || []) },
+            { roleWrite: In(userData.userRoles || []) }
+         ]
+      })).map(g => ({
+         ...g,
+         read: (userData.userRoles || []).includes(g.roleRead),
+         write: (userData.userRoles || []).includes(g.roleWrite),
+      } as KPI_Group_Dto))
    }
 
-   async getKPI(dto: KPI_GetRequestDto, _: Request) {
-      const group = await this.groupRepository.findOne({ where: { id: dto.group_id } })
+   async getKPI(dto: KPI_GetRequestDto, req: Request) {
+      const userData = getTokenData(req)
+      const group = await this.groupRepository.findOne({
+         where: {
+            id: dto.group_id,
+            roleRead: In(userData.userRoles || [])
+         }
+      })
       if (group) {
          return await this.productRepository.find({where: {group: group}, relations: {kpis: true}})
       }
       return []
    }
 
-   async setKPI(dto: Array<KPI_PostRequestDto>, _: Request) {
+   async setKPI(dto: Array<KPI_PostRequestDto>, req: Request) {
+      const userData = getTokenData(req)
+
       const upsert: KPI_Kpi[] = []
       for (const k of dto) {
          const kpi = new KPI_Kpi()
          kpi.id = k.id >= 0 ? k.id : undefined
          kpi.date = k.date
          kpi.value = k.value
-         kpi.product = await this.productRepository.findOneBy({id: k.product})
+         const product = await this.productRepository.findOne({ where: {id: k.product}, relations: { group: true } })
+         const group = await this.groupRepository.findOne({
+            where: {
+               id: product.group.id,
+               roleWrite: In(userData.userRoles || [])
+            }
+         })
+         if (!group) {
+            return req.res.status(403).json({status: 403, message: 'Недостаточно прав на запись'})
+         }
+         kpi.product = product
          upsert.push(kpi)
       }
       await this.kpiRepository.upsert(upsert, ['date', 'product'])

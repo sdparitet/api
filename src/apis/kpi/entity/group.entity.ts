@@ -1,12 +1,26 @@
 import { Column, Entity, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
 import { KPI_Product } from '~kpi/entity/product.entity';
 
-
+/**
+ * @param {number} id
+ * @param {string} name
+ * @param {boolean} read
+ * @param {boolean} write
+ * @param {KPI_Product[]} products
+ */
+export interface KPI_Group_Dto {
+   id: number
+   name: string
+   read: boolean
+   write: boolean
+   products: KPI_Product[]
+}
 
 /**
  * @param {number} id
  * @param {string} name
- * @param {string} role
+ * @param {string} roleRead
+ * @param {string} roleWrite
  * @param {KPI_Product[]} products
  */
 @Entity()
@@ -19,7 +33,10 @@ export class KPI_Group {
    name: string;
 
    @Column({ type: 'varchar', default: 'KPI_0' })
-   role: string;
+   roleRead: string;
+
+   @Column({ type: 'varchar', default: 'KPI_0' })
+   roleWrite: string;
 
    @OneToMany(
       type => KPI_Product,
