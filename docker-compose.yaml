@@ -19,7 +19,7 @@ services:
     container_name: api
     extra_hosts:
       - "host.docker.internal:host-gateway"
-      - "services.paritet.su notif.services.paritet.su:192.168.10.25"
+      - "portal.paritet.su notif.portal.paritet.su:192.168.10.25"
     env_file:
       - .env.api
     volumes:

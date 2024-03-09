@@ -25,7 +25,8 @@
       "~guards/*"   : ["src/guards/*"],
       "~utils/*"    : ["src/utils/*"],
 
-      "~kpi/*"        : ["src/apis/kpi/*"],
+      "~kpi/*"      : ["src/apis/kpi/*"],
+      "~stat/*"     : ["src/apis/stat/*"],
     }
 
   }

@@ -5,6 +5,7 @@ import { JwtService } from "@nestjs/jwt";
 import { AppModule } from "./app.module";
 
 import { AccessGuard } from '~guards/access.guard';
+import { KPI_DB_CONNECTION, STAT_DB_CONNECTION } from '~root/src/constants';
 
 
 async function start() {
@@ -29,7 +30,8 @@ async function start() {
 
       /** *************************************************************** **/
 
-      .addTag("KPI", "Контроллер учёта значений KPI")
+      .addTag(KPI_DB_CONNECTION, "Контроллер учёта значений KPI")
+      .addTag(STAT_DB_CONNECTION, "Статистика")
 
       /** *************************************************************** **/
 
@@ -48,13 +50,15 @@ async function start() {
 
    // CORS
    const CORSAllowList = [
-      "https://sd.paritet.su",
-      "https://auth.sd.paritet.su",
+      "https://portal.paritet.su",
       "http://192.168.10.25",
       "http://192.168.10.25:80",
       "http://192.168.10.25:3301",
+      "http://192.168.10.25:3311",
       "http://localhost:3000",
       "http://localhost:3301",
+      "http://localhost:3311",
+      "http://localhost:4242",
    ]
    const corsOptionsDelegate = function (req: string, callback: (arg0: null, arg1: any) => void) {
       let corsOptions: { origin: boolean; };

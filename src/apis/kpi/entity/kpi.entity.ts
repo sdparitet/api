@@ -1,5 +1,6 @@
 import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
 import { KPI_Product } from '~kpi/entity/product.entity';
+import { KPI_DB_CONNECTION } from '~root/src/constants';
 
 
 /**
@@ -8,7 +9,7 @@ import { KPI_Product } from '~kpi/entity/product.entity';
  * @param {number} value
  * @param {KPI_Product} product
  */
-@Entity()
+@Entity({ database: KPI_DB_CONNECTION })
 @Unique('kpi_kp', ['date', 'product'])
 export class KPI_Kpi {
 

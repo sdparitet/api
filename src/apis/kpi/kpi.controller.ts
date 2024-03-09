@@ -6,10 +6,20 @@ import { GlobalRoles } from '~roles/All-roles';
 import { KPI_GetRequestDto } from '~kpi/dto/get-request-dto';
 import { KPI_PostRequestDto } from '~kpi/dto/post-request-dto';
 import { Request } from 'express';
+import { ApiTags } from '@nestjs/swagger';
+import { KPI_DB_CONNECTION } from '~root/src/constants';
 
+@ApiTags(KPI_DB_CONNECTION)
 @Controller("kpi")
 export class Kpi_Controller {
    constructor(private kpiService: Kpi_Service) { }
+
+   @Roles(Kpi_Roles.KPI_USER, ...Object.values(GlobalRoles))
+   @Get("/GetCategories")
+   @Header("content-type", "application/json")
+   gcs(@Req() req: Request) {
+      return this.kpiService.getCategories(req);
+   }
 
    @Roles(Kpi_Roles.KPI_USER, ...Object.values(GlobalRoles))
    @Get("/GetGroups")

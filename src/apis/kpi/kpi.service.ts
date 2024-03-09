@@ -10,16 +10,19 @@ import { KPI_Product } from "~kpi/entity/product.entity";
 import { KPI_Kpi } from '~kpi/entity/kpi.entity';
 import { JwtService } from '@nestjs/jwt';
 import { getTokenData } from '~root/src/apis/helpers';
+import { KPI_Category, KPI_Category_Dto } from '~kpi/entity/category.entity';
 
 @Injectable()
 export class Kpi_Service {
    constructor(
-      @InjectRepository(KPI_Kpi)
-      private kpiRepository: Repository<KPI_Kpi>,
+      @InjectRepository(KPI_Category)
+      private categoryRepository: Repository<KPI_Category>,
       @InjectRepository(KPI_Group)
       private groupRepository: Repository<KPI_Group>,
       @InjectRepository(KPI_Product)
       private productRepository: Repository<KPI_Product>,
+      @InjectRepository(KPI_Kpi)
+      private kpiRepository: Repository<KPI_Kpi>,
    ) { }
 
    async up() {
@@ -58,13 +61,25 @@ export class Kpi_Service {
       return true
    }
 
+   async getCategories(req: Request) {
+      const userData = getTokenData(req)
+      return (await this.categoryRepository.find({
+         where: [
+            { roleRead: In(userData.userRoles || []) },
+         ]
+      })).map(g => ({
+         ...g,
+         read: (userData.userRoles || []).includes(g.roleRead),
+      } as KPI_Category_Dto))
+   }
+
    async getGroups(req: Request) {
       const userData = getTokenData(req)
       return (await this.groupRepository.find({
          where: [
             { roleRead: In(userData.userRoles || []) },
             { roleWrite: In(userData.userRoles || []) }
-         ]
+         ], relations: { category: true }
       })).map(g => ({
          ...g,
          read: (userData.userRoles || []).includes(g.roleRead),
@@ -89,7 +104,6 @@ export class Kpi_Service {
    async setKPI(dto: Array<KPI_PostRequestDto>, req: Request) {
       const userData = getTokenData(req)
 
-      const upsert: KPI_Kpi[] = []
       for (const k of dto) {
          const kpi = new KPI_Kpi()
          kpi.id = k.id >= 0 ? k.id : undefined
@@ -106,9 +120,23 @@ export class Kpi_Service {
             return req.res.status(403).json({status: 403, message: 'Недостаточно прав на запись'})
          }
          kpi.product = product
-         upsert.push(kpi)
+
+         if (await this.kpiRepository.exists({
+            where: {
+               date: kpi.date,
+               product: kpi.product
+            }
+         })) {
+            // update.push(kpi)
+            await this.kpiRepository.update({ date: kpi.date, product: kpi.product }, kpi)
+         }
+         else {
+            // insert.push(kpi)
+            await this.kpiRepository.insert(kpi)
+         }
       }
-      await this.kpiRepository.upsert(upsert, ['date', 'product'])
+
+      // await this.kpiRepository.upsert(upsert, ['date', 'productId'])
    }
 
 }

@@ -1,16 +1,18 @@
 import { Column, Entity, PrimaryGeneratedColumn, OneToMany, ManyToOne } from 'typeorm';
 import { KPI_Kpi } from '~kpi/entity/kpi.entity';
 import { KPI_Group } from '~kpi/entity/group.entity';
+import { KPI_DB_CONNECTION } from '~root/src/constants';
+import { KPI_Category } from './category.entity';
 
 
 /**
  * @param {number} id
  * @param {string} name
- * @param {string} unit
+ * @param {string} description
  * @param {KPI_Kpi[]} kpis
  * @param {KPI_Group} group
  */
-@Entity()
+@Entity( { database: KPI_DB_CONNECTION })
 export class KPI_Product {
 
    @PrimaryGeneratedColumn({ unsigned: true, zerofill: true })
@@ -19,8 +21,8 @@ export class KPI_Product {
    @Column({ type: 'varchar', unique: true })
    name: string;
 
-   @Column({ type: 'varchar' })
-   unit: string;
+   @Column({ type: 'varchar', nullable: true })
+   description: string;
 
    @OneToMany(
       type => KPI_Kpi,
