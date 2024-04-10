@@ -38,6 +38,6 @@ export class Staff_Controller {
    @Post("/SetStaff")
    @Header("content-type", "application/json")
    skpi(@Req() req: Request, @Body() dto: Array<STAFF_PostRequestDto>) {
-      return this.staffService.SetStaff(dto, req);
+      return this.staffService.SetStaff(dto);
    }
 }

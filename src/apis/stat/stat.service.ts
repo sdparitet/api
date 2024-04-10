@@ -112,7 +112,6 @@ export class Stat_Service {
 
    @Cron('*/5 * * * * *', { name: 'TicketUpdate' })
    private async handleCron() {
-      // if (process.env.NODE_ENV === 'development') return
       const job = this.schedulerRegistry.getCronJob('TicketUpdate');
       job.stop()
       this.logger.verbose('START: Ticket update');
@@ -164,6 +163,7 @@ export class Stat_Service {
             `order by s.ticket_id ${desc ? 'desc' : ''} ` +
             `limit ${limit}` +
             ';') as {id:number}[]).map(i => i.id).join(',')
+
 
          //   1   linked_action = 20 AND id_search_option = 0 - создание заявки
          //   2   linked_action = 16 AND id_search_option = 0 - снятие спеца
@@ -463,7 +463,8 @@ export class Stat_Service {
       }
 
       this.logger.warn('END: Ticket update');
-      // job.start()
+      if (process.env.NODE_ENV === 'development') return
+      job.start()
    }
 
 }
