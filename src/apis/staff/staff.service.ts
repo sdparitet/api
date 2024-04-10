@@ -1,0 +1,114 @@
+import { Injectable } from "@nestjs/common";
+import { InjectRepository } from "@nestjs/typeorm";
+import { Repository, In } from "typeorm";
+import { Request } from 'express';
+
+import { getTokenData } from '~root/src/apis/helpers';
+import {  Staff_Category_Dto,  Staff_Category } from '~staff/entity/category.entity';
+import {  Staff_Group,  Staff_Group_Dto } from '~staff/entity/group.entity';
+import {  Staff_Position } from '~staff/entity/position.entity';
+import {  Staff_Stat } from '~staff/entity/stat.entity';
+import { STAFF_GetRequestDto } from '~staff/dto/get-request-dto';
+import { STAFF_PostRequestDto } from '~staff/dto/post-request-dto';
+
+@Injectable()
+export class Staff_Service {
+   constructor(
+      @InjectRepository( Staff_Category)
+      private categoryRepository: Repository<Staff_Category>,
+      @InjectRepository( Staff_Group)
+      private groupRepository: Repository<Staff_Group>,
+      @InjectRepository( Staff_Position)
+      private positionRepository: Repository<Staff_Position>,
+      @InjectRepository( Staff_Stat)
+      private statRepository: Repository<Staff_Stat>,
+   ) { }
+
+   async getCategories(req: Request) {
+      const userData = getTokenData(req)
+      return (await this.categoryRepository.find({
+         where: [
+            { roleRead: In(userData.userRoles || []) },
+         ]
+      })).map(c => ({
+         ...c,
+         read: (userData.userRoles || []).includes(c.roleRead),
+      } as  Staff_Category_Dto))
+         .sort((a,b) => a.id - b.id)
+   }
+
+   async getGroups(req: Request) {
+      const userData = getTokenData(req)
+      return (await this.groupRepository.find({
+         where: [
+            { roleRead: In(userData.userRoles || []) },
+            { roleWrite: In(userData.userRoles || []) }
+         ], relations: { positions: true }
+      })).map(g => ({
+         ...g,
+         read: (userData.userRoles || []).includes(g.roleRead),
+         write: (userData.userRoles || []).includes(g.roleWrite),
+      } as  Staff_Group_Dto))
+   }
+
+   async GetStaff(dto: STAFF_GetRequestDto, req: Request) {
+      const userData = getTokenData(req)
+      return await this.statRepository.find({
+         relations: {
+            position: true
+         },
+         where: {
+            year: dto.year,
+            position: {
+               group: {
+                  roleRead: In(userData.userRoles || [])
+               }
+            }
+         }
+      })
+   }
+
+   async SetStaff(dto: Array<STAFF_PostRequestDto> /*, req: Request*/) {
+      // const userData = getTokenData(req)
+      for (const d of dto) {
+         const cat = await this.categoryRepository.findOne({
+            where: {
+               id: d.category
+            }
+         })
+         const pos = await this.positionRepository.findOne({
+            where: {
+               id: d.position
+            }
+         })
+         const staff: Staff_Stat = {
+            ...d,
+            year: Number(d.year),
+            value: Number(d.value),
+            category: cat,
+            position: pos,
+            categoryId: d.category,
+            positionId: d.position,
+         }
+
+         if (await this.statRepository.exists({
+            where: {
+               year: staff.year,
+               categoryId: staff.categoryId,
+               positionId: staff.positionId,
+               month: staff.month
+            }
+         })) {
+            // update.push(kpi)
+            await this.statRepository.update({ year: staff.year, categoryId: staff.categoryId, positionId: staff.positionId, month: staff.month }, staff)
+         }
+         else {
+            // insert.push(kpi)
+            await this.statRepository.insert(staff)
+         }
+      }
+
+      // await this.statRepository.upsert(upsert, ['date', 'productId'])
+   }
+
+}

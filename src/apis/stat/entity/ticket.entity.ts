@@ -29,7 +29,7 @@ export class Stat_Ticket {
    @Column({ type: 'bigint', nullable: false, default: 0 })
    solution: number;
 
-   @Column({ type: 'int', nullable: false, default: 0 })
+   @Column({ type: 'float', nullable: false, default: 0 })
    cost: number;
 
    @UpdateDateColumn({ type: 'timestamp', nullable: false, default: () => 'CURRENT_TIMESTAMP' })

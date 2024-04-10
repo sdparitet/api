@@ -7,9 +7,8 @@ import { KPI_GetRequestDto } from '~kpi/dto/get-request-dto';
 import { KPI_PostRequestDto } from '~kpi/dto/post-request-dto';
 import { Request } from 'express';
 import { ApiTags } from '@nestjs/swagger';
-import { KPI_DB_CONNECTION } from '~root/src/constants';
 
-@ApiTags(KPI_DB_CONNECTION)
+@ApiTags('kpi')
 @Controller("kpi")
 export class Kpi_Controller {
    constructor(private kpiService: Kpi_Service) { }
@@ -42,3 +41,4 @@ export class Kpi_Controller {
       return this.kpiService.setKPI(dto, req);
    }
 }
+

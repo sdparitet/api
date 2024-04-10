@@ -8,7 +8,6 @@ import { KPI_PostRequestDto } from './dto/post-request-dto';
 import { KPI_Group, KPI_Group_Dto } from "~kpi/entity/group.entity";
 import { KPI_Product } from "~kpi/entity/product.entity";
 import { KPI_Kpi } from '~kpi/entity/kpi.entity';
-import { JwtService } from '@nestjs/jwt';
 import { getTokenData } from '~root/src/apis/helpers';
 import { KPI_Category, KPI_Category_Dto } from '~kpi/entity/category.entity';
 
@@ -114,6 +113,9 @@ export class Kpi_Service {
             where: {
                id: product.group.id,
                roleWrite: In(userData.userRoles || [])
+            },
+            relations: {
+               category: true
             }
          })
          if (!group) {

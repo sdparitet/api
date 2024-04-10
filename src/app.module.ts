@@ -4,11 +4,12 @@ import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
 
-import { STAT_DB_CONNECTION, KPI_DB_CONNECTION } from '~root/src/constants';
+import { STAT_DB_CONNECTION } from '~root/src/constants';
 
 import { Kpi_Module } from '~kpi/kpi.module';
 import { LoggerMiddleware } from '~utils/loggerMiddleware';
 import { Stat_Module } from '~stat/stat.module';
+import { Staff_Module } from '~staff/staff.module';
 
 @Module({
    controllers: [],
@@ -27,7 +28,10 @@ import { Stat_Module } from '~stat/stat.module';
          username: process.env.POSTGRES_USER,
          password: process.env.POSTGRES_PASSWORD,
          database: process.env.POSTGRES_DB,
-         entities: [__dirname + "/apis/kpi/entity/*.entity.{js,ts}"],
+         entities: [
+            __dirname + "/apis/kpi/entity/*.entity.{js,ts}",
+            __dirname + "/apis/staff/entity/*.entity.{js,ts}",
+         ],
          autoLoadEntities: true,
          logging: process.env.NODE_ENV === 'development' ? "all" : ["error"],
          synchronize: process.env.NODE_ENV === 'development',
@@ -47,6 +51,7 @@ import { Stat_Module } from '~stat/stat.module';
       }),
 
       Kpi_Module,
+      Staff_Module,
       Stat_Module,
    ],
 })

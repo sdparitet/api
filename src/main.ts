@@ -5,7 +5,6 @@ import { JwtService } from "@nestjs/jwt";
 import { AppModule } from "./app.module";
 
 import { AccessGuard } from '~guards/access.guard';
-import { KPI_DB_CONNECTION, STAT_DB_CONNECTION } from '~root/src/constants';
 
 
 async function start() {
@@ -30,8 +29,9 @@ async function start() {
 
       /** *************************************************************** **/
 
-      .addTag(KPI_DB_CONNECTION, "Контроллер учёта значений KPI")
-      .addTag(STAT_DB_CONNECTION, "Статистика")
+      .addTag('kpi', "Контроллер учёта значений KPI")
+      .addTag('staff', "Контроллер учёта статистики персонала")
+      .addTag('stat', "Статистика")
 
       /** *************************************************************** **/
 

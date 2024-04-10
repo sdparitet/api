@@ -20,6 +20,7 @@ WORKDIR /prod
 EXPOSE 4242
 
 COPY package-build.json ./package.json
+COPY package-lock.json ./package-lock.json
 RUN npm install --silent
 
 COPY --from=build /app/dist ./

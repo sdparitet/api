@@ -1,4 +1,4 @@
-import { ViewColumn, View, ViewEntity } from 'typeorm';
+import { ViewColumn, ViewEntity } from 'typeorm';
 import { STAT_DB_CONNECTION } from '~root/src/constants';
 
 
@@ -24,6 +24,12 @@ import { STAT_DB_CONNECTION } from '~root/src/constants';
  * @param {string} user_specialist
  * @param {number} user_viewer_id
  * @param {string} user_viewer
+ * @param {number} group_author_id
+ * @param {string} group_author
+ * @param {number} group_specialist_id
+ * @param {string} group_specialist
+ * @param {number} group_viewer_id
+ * @param {string} group_viewer
  * @param {string} request_type
  * @param {number} urgency
  * @param {number} impact
@@ -36,6 +42,7 @@ import { STAT_DB_CONNECTION } from '~root/src/constants';
  * @param {string} date_solve
  * @param {string} date_close
  * @param {string} date_mode
+ * @param {string} request_type
  */
 @ViewEntity({
    name: 'all_tickets',
@@ -52,17 +59,23 @@ import { STAT_DB_CONNECTION } from '~root/src/constants';
       '     , t.name ' +
       '     , t.content ' +
       '     , t.users_id_lastupdater                   as user_updater_id ' +
-      '     , CONCAT(ul.firstname, \' \', ul.realname)   as user_updater ' +
+      '     , CONCAT(ul.firstname, \' \', ul.realname) as user_updater ' +
       '     , t.entities_id                            as entity_id ' +
       '     , te.name                                  as entity ' +
       '     , t.users_id_recipient                     as user_recipient_id ' +
-      '     , CONCAT(ur.firstname, \' \', ur.realname)   as user_recipient ' +
+      '     , CONCAT(ur.firstname, \' \', ur.realname) as user_recipient ' +
       '     , tu1.users_id                             as user_author_id ' +
       '     , CONCAT(ur1.firstname, \' \', ur1.realname) as user_author ' +
       '     , tu2.users_id                             as user_specialist_id ' +
       '     , CONCAT(ur2.firstname, \' \', ur2.realname) as user_specialist ' +
       '     , tu3.users_id                             as user_viewer_id ' +
       '     , CONCAT(ur3.firstname, \' \', ur3.realname) as user_viewer ' +
+      '     , tg1.groups_id                            as group_author_id ' +
+      '     , ug1.completename                         as group_author ' +
+      '     , tg2.groups_id                            as group_specialist_id ' +
+      '     , ug2.completename                         as group_specialist ' +
+      '     , tg3.groups_id                            as group_viewer_id ' +
+      '     , ug3.completename                         as group_viewer ' +
       '     , rt.name                                  as request_type ' +
       '     , t.urgency                                as urgency ' +
       '     , t.impact                                 as impact ' +
@@ -87,11 +100,17 @@ import { STAT_DB_CONNECTION } from '~root/src/constants';
       '         left join glpi.glpi_tickets_users tu1 on tu1.tickets_id = t.id and tu1.type = 1 ' +
       '         left join glpi.glpi_tickets_users tu2 on tu2.tickets_id = t.id and tu2.type = 2 ' +
       '         left join glpi.glpi_tickets_users tu3 on tu3.tickets_id = t.id and tu3.type = 3 ' +
+      '         left join glpi.glpi_groups_tickets tg1 on tg1.tickets_id = t.id and tg1.type = 1 ' +
+      '         left join glpi.glpi_groups_tickets tg2 on tg2.tickets_id = t.id and tg2.type = 2 ' +
+      '         left join glpi.glpi_groups_tickets tg3 on tg3.tickets_id = t.id and tg3.type = 3 ' +
       '         left join glpi.glpi_users ul on ul.id = t.users_id_lastupdater ' +
       '         left join glpi.glpi_users ur on ur.id = t.users_id_recipient ' +
       '         left join glpi.glpi_users ur1 on ur1.id = tu1.users_id ' +
       '         left join glpi.glpi_users ur2 on ur2.id = tu2.users_id ' +
       '         left join glpi.glpi_users ur3 on ur3.id = tu3.users_id ' +
+      '         left join glpi.glpi_groups ug1 on ug1.id = tg1.groups_id ' +
+      '         left join glpi.glpi_groups ug2 on ug2.id = tg2.groups_id ' +
+      '         left join glpi.glpi_groups ug3 on ug3.id = tg3.groups_id ' +
       '         left join glpi.glpi_entities te on te.id = t.entities_id ' +
       '         left join glpi.glpi_requesttypes rt on rt.id = t.requesttypes_id ' +
       '         left join glpi.glpi_plugin_fields_userdifferents ud on ud.itemtype = \'User\' and ud.items_id = tu2.users_id ' +
@@ -101,6 +120,7 @@ import { STAT_DB_CONNECTION } from '~root/src/constants';
       '         left join glpi.glpi_itilcategories tc3 on tc3.id = tc2.itilcategories_id ' +
       '         left join glpi.glpi_itilcategories tc4 on tc4.id = tc3.itilcategories_id ' +
       '         left join glpi.glpi_itilcategories tc5 on tc5.id = tc4.itilcategories_id ' +
+      'where t.id is not null' +
       ';'
 })
 export class Stat_ALLTicket {
@@ -168,6 +188,24 @@ export class Stat_ALLTicket {
 
    @ViewColumn()
    user_viewer: string;
+
+   @ViewColumn()
+   group_author_id: number;
+
+   @ViewColumn()
+   group_author: string;
+
+   @ViewColumn()
+   group_specialist_id: number;
+
+   @ViewColumn()
+   group_specialist: string;
+
+   @ViewColumn()
+   group_viewer_id: number;
+
+   @ViewColumn()
+   group_viewer: string;
 
    @ViewColumn()
    request_type: string;
