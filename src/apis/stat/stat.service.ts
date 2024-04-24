@@ -8,7 +8,7 @@ import { Moment } from 'moment';
 import { Stat_RequestTicketDto } from '~stat/dto/post-request-dto';
 import { Cron, SchedulerRegistry } from '@nestjs/schedule';
 import { Connection } from "mariadb";
-import { ILogData, IUserLogDto, IUserLogData } from '~stat/types';
+import { ILogData, IUserLogDto, IUserLogData, IUserLogDataNormalized } from '~stat/types';
 import { STAT_DB_CONNECTION } from '~root/src/constants';
 import { Stat_Ticket } from '~stat/entity/ticket.entity';
 import { Stat_ALLTicket } from '~stat/entity/all_ticket.entity';
@@ -117,6 +117,8 @@ export class Stat_Service {
       this.logger.verbose('START: Ticket update');
 
       try {
+
+         //#region [ SQL ]
          const holidays = (await this.connection.query('' +
             'select begin_date as begin, end_date as end ' +
             'from glpi.glpi_calendars_holidays ch ' +
@@ -163,16 +165,6 @@ export class Stat_Service {
             `order by s.ticket_id ${desc ? 'desc' : ''} ` +
             `limit ${limit}` +
             ';') as {id:number}[]).map(i => i.id).join(',')
-
-
-         //   1   linked_action = 20 AND id_search_option = 0 - создание заявки
-         //   2   linked_action = 16 AND id_search_option = 0 - снятие спеца
-         //   3   linked_action = 15 AND id_search_option = 5 - назначение
-         //   4   linked_action = 15 AND id_search_option = 6 - назначение поставщика
-         //   5   linked_action = 15 AND id_search_option = 8 - назначение группы
-         //   6   linked_action = 0 AND id_search_option = 12 - статус (1 - новая, 2 в работе, 3 - запланирована, 4 - ожидание, 5 - решена, 6 - закрыта)
-         //   7   linked_action = 0 AND id_search_option = 17 - дата решения
-         //   8   linked_action = 0 AND id_search_option = 16 - дата закрытия
          const getLogs = async (tickets: string) => (await this.connection.query('' +
             'select * ' +
             'from (select l.items_id as ticket_id ' +
@@ -206,39 +198,72 @@ export class Stat_Service {
             ';')) as ILogData[]
 
          const userLogsQuery = '' +
-            'select l.fotfield as fot ' +
-            '     , l.id ' +
-            '     , l.name ' +
-            '     , l.full_name ' +
-            '     , l.ticket_id ' +
-            '     , l.start ' +
+            'select u.id ' +
+            '     , if (u.l_type = 2, @i := @i + 1, if (u.l_type = 3, @i := @i - 1, @i)) as i ' +
+            '     , u.fotfield as fot ' +
+            '     , u.ticket_id ' +
+            '     , u.start ' +
             '     , u.end ' +
             'from (select * ' +
-            '      from (select *, if(l_type = 2 or (l_type = 6 and old_value >= 5 and new_value < 5), l_date, null) as start ' +
-            '            from user_logs) u ' +
-            '      where u.start is not null' +
-            '     ) l ' +
-            '         inner join (select *, if( ' +
-            '                                l_type = 3 ' +
-            '                                or l_type = 7 ' +
-            '                                or l_type = 8 ' +
-            '                                or (l_type = 6 and old_value < 5 and new_value >= 5) ' +
-            '                            , l_date, null ' +
-            '                            ) as end ' +
-            '                     from user_logs ' +
-            '                     ) u on u.id = l.id and u.ticket_id = l.ticket_id and u.end is not null and u.end >= l.start ';
-         const getUserLogsByTickets = async (tickets: string) => (await this.connection.query(userLogsQuery +
-            `where l.ticket_id in (${tickets}) ` +
-            'group by id, ticket_id, start ' +
-            'order by id, ticket_id, start ' +
-            ';')) as IUserLogDto[]
-         const getUserLogsByUsers = async (users: string, startDate: Moment, endDate: Moment) => (await this.connection.query(userLogsQuery +
-            `where l.id in (${users}) ` +
-            `  and l.start >= '${startDate.toISOString(false)}' ` +
-            `  and l.start <= '${endDate.toISOString(false)}' ` +
-            'group by id, ticket_id, start ' +
-            'order by id, ticket_id, start ' +
-            ';')) as IUserLogDto[]
+            '           , if( ' +
+            '                l_type = 2 ' +
+            '                or (l_type = 6 and (old_value >= 4 and new_value < 4)) ' +
+            '            , l_date, null ' +
+            '             ) as start ' +
+            '           , if( ' +
+            '                l_type = 3 ' +
+            '                or l_type = 7 ' +
+            '                or l_type = 8 ' +
+            '                or (l_type = 6 and (old_value < 4 and new_value >= 4)) ' +
+            '            , l_date, null ' +
+            '             ) as end ' +
+            '      , @i:= 0 ' +
+            '      from user_logs ' +
+            '      ) u ' +
+            'where (start is not null or end is not null) ';
+
+         const getUserLogsByTickets = async (tickets: string) => normalizeUserLogData(await this.connection.query(userLogsQuery +
+            `  and ticket_id in (${tickets}) ` +
+            'order by id, ticket_id ' +
+            ';') as IUserLogDto[])
+
+         const getUserLogsByUsers = async (users: string, tId: number) => normalizeUserLogData(await this.connection.query(userLogsQuery +
+            `  and id in (${users}) ` +
+            `  and ticket_id <> ${tId} ` +
+            'order by id, ticket_id ' +
+            ';') as IUserLogDto[])
+
+
+         const normalizeUserLogData = (dataS: IUserLogDto[] = []):IUserLogDataNormalized[] => {
+            const data = dataS.map(ul => ({
+               ...ul,
+               fot: Number(ul.fot),
+               start: ul.start ? moment(ul.start) : null,
+               end: ul.end ? moment(ul.end) : null,
+            }) as IUserLogData)
+
+            const normalizedData:IUserLogDataNormalized[] = []
+            let startDate: Moment|null = null
+            let endDate: Moment|null = null
+
+            data.forEach(d => {
+               if (startDate === null && d.i > 0 && d.start !== null) startDate = d.start.clone();
+               if (startDate !== null && endDate === null && d.end !== null) endDate = d.end.clone();
+               if (startDate !== null && endDate !== null) {
+                  normalizedData.push({...d, start: startDate, end: endDate})
+                  // console.log('== + normalizedData =', startDate, endDate)
+                  startDate = null
+                  endDate = null
+               }
+            })
+            if (startDate !== null && endDate === null) {
+               normalizedData.push({...data[0], start: startDate, end: moment(moment.now())})
+               // console.log('== - normalizedData =', normalizedData[normalizedData.length-1].start, normalizedData[normalizedData.length-1].end)
+            }
+
+            return normalizedData
+         }
+         //#endregion
 
          const workingHoursBetweenDates = (startDate: Moment, endDate: Moment) => {
             // Store minutes worked
@@ -287,6 +312,7 @@ export class Stat_Service {
          const updateTickets = async (ticketList: string) => {
 
             const logData = await getLogs(ticketList);
+            const ulTicketData = await getUserLogsByTickets(ticketList);
 
             // const uniqueIds = [ ...new Set(logData.map(l => l.ticket_id))]
             const uniqueIds = ticketList.split(',').map(Number)
@@ -299,6 +325,10 @@ export class Stat_Service {
                let solveDate = moment(tData[0].date_creation)
                let status = 0
 
+               let isAwaits = false
+               let startWait = moment(tData[0].date_creation)
+               let waitMinutes = 0
+
                let reaction = -1
                let reactionNum = 0
 
@@ -306,6 +336,16 @@ export class Stat_Service {
                let isSolved = false
                let stampDate = moment(tData[0].date_creation)
                let solve = -1
+
+
+               //   1   linked_action = 20 AND id_search_option = 0 - создание заявки
+               //   2   linked_action = 16 AND id_search_option = 0 - снятие спеца
+               //   3   linked_action = 15 AND id_search_option = 5 - назначение
+               //   4   linked_action = 15 AND id_search_option = 6 - назначение поставщика
+               //   5   linked_action = 15 AND id_search_option = 8 - назначение группы
+               //   6   linked_action = 0 AND id_search_option = 12 - статус (1 - новая, 2 в работе, 3 - запланирована, 4 - ожидание, 5 - решена, 6 - закрыта)
+               //   7   linked_action = 0 AND id_search_option = 17 - дата решения
+               //   8   linked_action = 0 AND id_search_option = 16 - дата закрытия
 
                tData.forEach(td => {
                   switch (td.l_type) {
@@ -338,18 +378,26 @@ export class Stat_Service {
                         break
                      }
                      case 6: {
-                        if (Number(td.old_value) >= 4 && Number(td.new_value) <= 3) {
+                        if (Number(td.old_value) > 4 && Number(td.new_value) <= 3) {
                            isActive = true
                            isSolved = false
                            stampDate = moment(td.l_date)
                         }
-                        if (Number(td.new_value) >= 4 && isActive) {
+                        if (Number(td.new_value) > 4 && isActive) {
                            solve = solve + workingHoursBetweenDates(stampDate, moment(td.l_date))
                            isActive = false
                            isSolved = true
                            solveDate = moment(td.l_date)
                         }
                         status = Number(td.new_value)
+                        if (status === 4) {
+                           isAwaits = true
+                           startWait = moment(td.l_date)
+                        }
+                        if (Number(td.old_value) === 4 && Number(td.new_value) !== 4) {
+                           isAwaits = false
+                           waitMinutes = waitMinutes + workingHoursBetweenDates(startWait, moment(td.l_date))
+                        }
                         break
                      }
                      case 7:
@@ -374,21 +422,22 @@ export class Stat_Service {
 
                // Calc cost
                let cost = 0
-               const userLogTicketData = await getUserLogsByTickets(ticketList);
-               const uData = userLogTicketData.filter(u => u.ticket_id === tId)
+               const ulTicketDataT = ulTicketData
+                  .filter(u => u.ticket_id === tId)
+               // console.log('+ ulTicketDataT: ', ulTicketDataT.length, ulTicketDataT[0] || [])
 
-               if (uData && uData.length > 0) {
-                  const userLogUserData = (await getUserLogsByUsers(uData.map(t => t.id).join(','), startDate, solveDate))
-                     .map(ul => ({ ...ul, fot: Number(ul.fot), start: moment(ul.start), end: moment(ul.end), }) as IUserLogData);
-                  // console.log('userLogUserData: ', userLogUserData.length, userLogUserData[0] || [])
+               if (ulTicketDataT && ulTicketDataT.length > 0) {
 
-                  const actingUsers = [...new Set(userLogUserData.map(ul => ul.id))]
+                  const actingUsers = [...new Set(ulTicketDataT.map(ul => ul.id))]
+                  // console.log('++ actingUsers: ', actingUsers.length, actingUsers)
+                  const ulTicketDataU = await getUserLogsByUsers(actingUsers.join(','), tId)
+                  // console.log('+++ ulTicketDataU: ', startDate, solveDate, ulTicketDataU.length, ulTicketDataU[0] || [])
 
                   let currentTime = startDate.clone().add(-1, 'minute')
                   while (currentTime <= solveDate) {
                      currentTime = currentTime.add(1, 'minute')
 
-                     // working time check
+                     // region skip not working time
                      let skip = false
                      holidays.forEach(h => {
                         if (currentTime.isBetween(h.begin, h.end)) skip = true;
@@ -402,23 +451,118 @@ export class Stat_Service {
                         currentTime = currentTime.endOf('day').add(this.workHoursStart, 'hour')
                         continue;
                      }
+                     // endregion
 
-                     const allTickets = userLogUserData
-                        .filter(ul => actingUsers.includes(ul.id) && ul.start <= currentTime && ul.end >= currentTime )
+                     actingUsers.forEach(u => {
+                        const userTicketData = ulTicketDataT.filter(d => d.id === u)
+                        if (userTicketData.length > 0) {
+                           userTicketData.forEach(d => {
+                              if (currentTime.isBetween(d.start, d.end)) {
+                                 const otherTicketCount = Math.max( 1, [...new Set(ulTicketDataU
+                                    .filter(du => du.id === u && currentTime.isBetween(du.start, du.end))
+                                    .map(ul => ul.ticket_id))].length || 0)
+                                 const fot = (userTicketData[0].fot || 0) / actingUsers.length / otherTicketCount
 
-                     if (allTickets.length) {
-                        actingUsers.forEach(u => {
-                           const filtered = allTickets.filter(ul => ul.id === u)
-                           if (filtered.length) {
-                              const fot = filtered[0].fot || 0
-                              const minuteCost = fot / (filtered.length || 1)
-                              cost = Math.round((cost + minuteCost + Number.EPSILON) * 100) / 100
+                                 cost = cost + fot
+                                 // console.log('==> ',`${tId} ${currentTime.format('LLL')},  U:${u}  F:${userTicketData[0].fot || 0}  Uc: ${actingUsers.length}  Oc:${otherTicketCount}  M:${fot}  C:${Math.round((cost + Number.EPSILON) * 100) / 100}`);
+                              }
+                           })
+                        }
+                     })
 
-                              // console.log('==> ',`${tId} ${currentTime.format('LLL')}, U:${u} F:${fot} T:${filtered.length} M:${minuteCost} C:${cost}`);
-                           }
-                        })
-                     }
                   }
+                  cost = Math.round((cost + Number.EPSILON) * 100) / 100
+
+
+                  // const normalizedUserLogData: IUserLogDataNormalized[] = []
+
+                  // actingUsers.forEach(u => {
+                  //    const usersData = ulTicketDataT.filter(ul => ul.id === u && ul.ticket_id === tId)
+                  //    if (usersData.length) {
+                  //       console.log('++++ usersData: ', usersData.length, usersData[1] || [])
+                  //
+                  //       let startDate: Moment|null = null
+                  //       let endDate: Moment|null = null
+                  //
+                  //       usersData.forEach(ud => {
+                  //          console.log('+++++ se ?', ud.start, ud.end)
+                  //          if (startDate === null && ud.start !== null) startDate = ud.start.clone();
+                  //          if (startDate !== null && endDate === null && ud.end !== null) endDate = ud.end.clone();
+                  //          if (startDate !== null && endDate !== null) {
+                  //             normalizedUserLogData.push({...ud, start: startDate, end: endDate})
+                  //             console.log('+++++ normalizedUserLogData =', startDate, endDate)
+                  //             startDate = null
+                  //             endDate = null
+                  //          }
+                  //       })
+                  //       if (startDate !== null && endDate === null) {
+                  //          normalizedUserLogData.push({...usersData[0], start: startDate, end: moment(moment.now())})
+                  //          console.log('+++++- normalizedUserLogData =', startDate, endDate, usersData[0])
+                  //       }
+                  //       console.log('++++++ normalizedUserLogData: ', Object.keys(normalizedUserLogData).length, normalizedUserLogData[Object.keys(normalizedUserLogData)[0]])
+                  //
+                  //    }
+                  // })
+
+
+                  // let currentTime = startDate.clone().add(-1, 'minute')
+                  // while (Object.keys(normalizedUserLogData).length > 0 && currentTime <= solveDate) {
+                  //    currentTime = currentTime.add(1, 'minute')
+                  //
+                  //    // working time check
+                  //    let skip = false
+                  //    holidays.forEach(h => {
+                  //       if (currentTime.isBetween(h.begin, h.end)) skip = true;
+                  //    })
+                  //    if (currentTime.hour() < this.workHoursStart ||
+                  //       currentTime.hour() >= this.workHoursEnd ||
+                  //       currentTime.day() === 0 ||
+                  //       currentTime.day() === 6
+                  //    ) skip = true;
+                  //
+                  //    if (skip) {
+                  //       currentTime = currentTime.endOf('day').add(this.workHoursStart, 'hour')
+                  //       continue;
+                  //    }
+                  // }
+
+                  // const actingUsers = [...new Set(userLogUserData.map(ul => ul.id))]
+                  //
+                  // let currentTime = startDate.clone().add(-1, 'minute')
+                  // while (currentTime <= solveDate) {
+                  //    currentTime = currentTime.add(1, 'minute')
+                  //
+                  //    // working time check
+                  //    let skip = false
+                  //    holidays.forEach(h => {
+                  //       if (currentTime.isBetween(h.begin, h.end)) skip = true;
+                  //    })
+                  //    if (currentTime.hour() < this.workHoursStart ||
+                  //       currentTime.hour() >= this.workHoursEnd ||
+                  //       currentTime.day() === 0 ||
+                  //       currentTime.day() === 6
+                  //    ) skip = true;
+                  //    if (skip) {
+                  //       currentTime = currentTime.endOf('day').add(this.workHoursStart, 'hour')
+                  //       continue;
+                  //    }
+                  //
+                  //    const allTickets = userLogUserData
+                  //       .filter(ul => actingUsers.includes(ul.id) && ul.start <= currentTime && ul.end >= currentTime )
+                  //
+                  //    if (allTickets.length) {
+                  //       actingUsers.forEach(u => {
+                  //          const filtered = allTickets.filter(ul => ul.id === u)
+                  //          if (filtered.length) {
+                  //             const fot = filtered[0].fot || 0
+                  //             const minuteCost = fot / (filtered.length || 1)
+                  //             cost = Math.round((cost + minuteCost + Number.EPSILON) * 100) / 100
+                  //
+                  //             // console.log('==> ',`${tId} ${currentTime.format('LLL')}, U:${u} F:${fot} T:${filtered.length} M:${minuteCost} C:${cost}`);
+                  //          }
+                  //       })
+                  //    }
+                  // }
                }
 
                await this.statRepository.upsert({
@@ -447,12 +591,14 @@ export class Stat_Service {
             await updateTickets(getTicketsSolution)
          }
 
-         let ticketsToUpdate = await getTicketsToUpdate('1 DAY', 100, 5)
+         const updateLimit = process.env.NODE_ENV === 'development' ? 10 : 100
+
+         let ticketsToUpdate = await getTicketsToUpdate('1 DAY', updateLimit, 5)
          if (ticketsToUpdate && ticketsToUpdate.length > 0) {
             await updateTickets(ticketsToUpdate)
          }
 
-         ticketsToUpdate = await getTicketsToUpdate('1 HOUR', 100, 6, true)
+         ticketsToUpdate = await getTicketsToUpdate('1 HOUR', updateLimit, 6, true)
          if (ticketsToUpdate && ticketsToUpdate.length > 0) {
             await updateTickets(ticketsToUpdate)
          }
