@@ -50,7 +50,7 @@ import { STAT_DB_CONNECTION } from '~root/src/constants';
    synchronize: false,
    expression: 'drop view all_tickets;' +
       'select t.id                                     as id ' +
-      '     , st.ticket_status                         as status ' +
+      '     , st.status                                as status ' +
       '     , st.reaction                              as time_reaction ' +
       '     , st.solution                              as time_solution ' +
       '     , ud.fotfield                              as user_cost ' +
@@ -95,8 +95,8 @@ import { STAT_DB_CONNECTION } from '~root/src/constants';
       '     , t.solvedate                              as date_solve ' +
       '     , t.closedate                              as date_close ' +
       '     , t.date_mod                               as date_mode ' +
-      'from stat.ticket st ' +
-      '         left join glpi.glpi_tickets t on t.id = st.ticket_id ' +
+      'from stat.glpi_tickets st ' +
+      '         left join glpi.glpi_tickets t on t.id = st.id ' +
       '         left join glpi.glpi_tickets_users tu1 on tu1.tickets_id = t.id and tu1.type = 1 ' +
       '         left join glpi.glpi_tickets_users tu2 on tu2.tickets_id = t.id and tu2.type = 2 ' +
       '         left join glpi.glpi_tickets_users tu3 on tu3.tickets_id = t.id and tu3.type = 3 ' +
