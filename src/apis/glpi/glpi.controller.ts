@@ -1,4 +1,4 @@
-import { Body, Controller, Header, Post } from "@nestjs/common";
+import { Body, Controller, Header, Post, Res } from "@nestjs/common";
 import { ApiTags, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { Roles } from '~guards/roles-auth.decorator';
 import { GlobalRoles } from '~roles/All-roles';
@@ -8,8 +8,9 @@ import {
    IGetUserTicketsRequestDto,
    IGetUserTicketsResponse,
    IGetUsersInTicketsByAuthorRequestDto,
-   IGetUsersInTicketsByAuthorRequestResponse,
+   IGetUsersInTicketsByAuthorResponse,
 } from '~glpi/dto/post-request-dto';
+import { Response } from "express";
 
 import { GLPI_DB_CONNECTION } from '~root/src/constants';
 
@@ -23,16 +24,17 @@ export class GLPI_Controller {
    @Header("content-type", "application/json")
    @ApiBody({ required: false, type: IGetUserTicketsRequestDto })
    @ApiResponse({ type: [IGetUserTicketsResponse] })
-   gut(@Body() dto: IGetUserTicketsRequestDto) {
-      return this.glpiService.GetUserTickets(dto);
+   gut(@Body() dto: IGetUserTicketsRequestDto, @Res() res: Response) {
+      return this.glpiService.GetUserTickets(dto, res);
    }
 
    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
    @Post("/GetUsersInTicketsByAuthor")
    @Header("content-type", "application/json")
    @ApiBody({ required: false, type: IGetUsersInTicketsByAuthorRequestDto })
-   @ApiResponse({ type: [IGetUsersInTicketsByAuthorRequestResponse] })
-   guitba(@Body() dto: IGetUsersInTicketsByAuthorRequestDto) {
-      return this.glpiService.GetUsersInTicketsByAuthor(dto);
+   @ApiResponse({ type: [IGetUsersInTicketsByAuthorResponse] })
+
+   guitba(@Body() dto: IGetUsersInTicketsByAuthorRequestDto, @Res() res: Response) {
+      return this.glpiService.GetUsersInTicketsByAuthor(dto, res);
    }
 }

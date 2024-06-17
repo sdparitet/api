@@ -52,7 +52,7 @@ export class IGetUserTicketsResponse {
  * @param {string} name
  * @param {number} type
  */
-export class IGetUsersInTicketsByAuthorRequestResponse {
+export class IGetUsersInTicketsByAuthorResponse {
    @ApiProperty()
    ticket_id: number
 
