@@ -10,17 +10,18 @@ import {  Staff_Position } from '~staff/entity/position.entity';
 import {  Staff_Stat } from '~staff/entity/stat.entity';
 import { STAFF_GetRequestDto } from '~staff/dto/get-request-dto';
 import { STAFF_PostRequestDto } from '~staff/dto/post-request-dto';
+import { KPI_DB_CONNECTION } from '~root/src/constants';
 
 @Injectable()
 export class Staff_Service {
    constructor(
-      @InjectRepository( Staff_Category)
+      @InjectRepository( Staff_Category, KPI_DB_CONNECTION)
       private categoryRepository: Repository<Staff_Category>,
-      @InjectRepository( Staff_Group)
+      @InjectRepository( Staff_Group, KPI_DB_CONNECTION)
       private groupRepository: Repository<Staff_Group>,
-      @InjectRepository( Staff_Position)
+      @InjectRepository( Staff_Position, KPI_DB_CONNECTION)
       private positionRepository: Repository<Staff_Position>,
-      @InjectRepository( Staff_Stat)
+      @InjectRepository( Staff_Stat, KPI_DB_CONNECTION)
       private statRepository: Repository<Staff_Stat>,
    ) { }
 

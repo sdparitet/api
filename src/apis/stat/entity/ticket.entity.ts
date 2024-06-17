@@ -11,7 +11,7 @@ import { STAT_DB_CONNECTION } from '~root/src/constants';
  * @param {number} last_log
  * @param {string} last_update
  */
-@Entity( 'glpi_tickets',{ database: STAT_DB_CONNECTION } )
+@Entity( 'stat_glpi_tickets',{ database: STAT_DB_CONNECTION } )
 export class Stat_Ticket {
 
    @Column({ type: 'int', primary: true, unique: true, nullable: false, default: 0 })
