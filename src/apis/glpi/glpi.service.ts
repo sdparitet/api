@@ -1,7 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";
-import { Request } from 'express';
 
 import { GLPI_DB_CONNECTION } from '~root/src/constants';
 import { IGetUserTicketsRequestDto, IGetUsersInTicketsByAuthorRequestDto } from '~glpi/dto/post-request-dto';
@@ -9,9 +8,6 @@ import { IGetUserTicketsRequestDto, IGetUsersInTicketsByAuthorRequestDto } from 
 @Injectable()
 export class GLPI_Service {
    constructor(
-      // @InjectRepository(GLPI_ALLTicket, GLPI_DB_CONNECTION)
-      // private readonly allStatRepository: Repository<GLPI_ALLTicket>,
-      // @InjectConnection(GLPI_DB_CONNECTION) private readonly connection: Connection,
       @InjectDataSource(GLPI_DB_CONNECTION) private readonly glpi: DataSource
    ) { }
 
