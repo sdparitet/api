@@ -10,17 +10,18 @@ import { KPI_Product } from "~kpi/entity/product.entity";
 import { KPI_Kpi } from '~kpi/entity/kpi.entity';
 import { getTokenData } from '~root/src/apis/helpers';
 import { KPI_Category, KPI_Category_Dto } from '~kpi/entity/category.entity';
+import { KPI_DB_CONNECTION } from '~root/src/constants';
 
 @Injectable()
 export class Kpi_Service {
    constructor(
-      @InjectRepository(KPI_Category)
+      @InjectRepository(KPI_Category, KPI_DB_CONNECTION)
       private categoryRepository: Repository<KPI_Category>,
-      @InjectRepository(KPI_Group)
+      @InjectRepository(KPI_Group, KPI_DB_CONNECTION)
       private groupRepository: Repository<KPI_Group>,
-      @InjectRepository(KPI_Product)
+      @InjectRepository(KPI_Product, KPI_DB_CONNECTION)
       private productRepository: Repository<KPI_Product>,
-      @InjectRepository(KPI_Kpi)
+      @InjectRepository(KPI_Kpi, KPI_DB_CONNECTION)
       private kpiRepository: Repository<KPI_Kpi>,
    ) { }
 
