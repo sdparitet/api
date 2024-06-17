@@ -54,7 +54,7 @@ import { STAT_DB_CONNECTION } from '~root/src/constants';
       '     , st.reaction                              as time_reaction ' +
       '     , st.solution                              as time_solution ' +
       '     , ud.fotfield                              as user_cost ' +
-      '     , TRUNCATE(st.solution * ud.fotfield, 2)   as ticket_cost ' +
+      '     , st.cost                                  as ticket_cost ' +
       '     , st.last_update                           as stat_updated ' +
       '     , t.name ' +
       '     , t.content ' +
@@ -95,7 +95,7 @@ import { STAT_DB_CONNECTION } from '~root/src/constants';
       '     , t.solvedate                              as date_solve ' +
       '     , t.closedate                              as date_close ' +
       '     , t.date_mod                               as date_mode ' +
-      'from stat.glpi_tickets st ' +
+      'from stat.stat_glpi_tickets st ' +
       '         left join glpi.glpi_tickets t on t.id = st.id ' +
       '         left join glpi.glpi_tickets_users tu1 on tu1.tickets_id = t.id and tu1.type = 1 ' +
       '         left join glpi.glpi_tickets_users tu2 on tu2.tickets_id = t.id and tu2.type = 2 ' +
