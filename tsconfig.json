@@ -28,6 +28,7 @@
       "~kpi/*"      : ["src/apis/kpi/*"],
       "~staff/*"    : ["src/apis/staff/*"],
       "~stat/*"     : ["src/apis/stat/*"],
+      "~glpi/*"     : ["src/apis/glpi/*"],
     }
 
   }

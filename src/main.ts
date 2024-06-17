@@ -32,6 +32,7 @@ async function start() {
       .addTag('kpi', "Контроллер учёта значений KPI")
       .addTag('staff', "Контроллер учёта статистики персонала")
       .addTag('stat', "Статистика")
+      .addTag('glpi', "GLPI")
 
       /** *************************************************************** **/
 
@@ -50,7 +51,6 @@ async function start() {
 
    // CORS
    const CORSAllowList = [
-      "https://portal.paritet.su",
       "http://192.168.10.25",
       "http://192.168.10.25:80",
       "http://192.168.10.25:3301",

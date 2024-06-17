@@ -2,7 +2,6 @@ import { Column, Entity, PrimaryGeneratedColumn, OneToMany, ManyToOne } from 'ty
 import { KPI_Kpi } from '~kpi/entity/kpi.entity';
 import { KPI_Group } from '~kpi/entity/group.entity';
 import { KPI_DB_CONNECTION } from '~root/src/constants';
-import { KPI_Category } from './category.entity';
 
 
 /**
