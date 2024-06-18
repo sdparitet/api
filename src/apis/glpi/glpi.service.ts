@@ -19,26 +19,23 @@ export class GLPI_Service {
    async GetUserTickets(dto: IGetUserTicketsRequestDto, res: Response) {
       try {
          const ret: IGetUserTicketsResponse[]  = await this.glpi.query('' +
-            'SELECT t.id' +
-            '     , t.type' +
-            '     , t.name' +
-            '     , t.status' +
-            '     , i.completename as category' +
-            '     , t.date_creation' +
-            '     , t.solvedate    as date_solve' +
+            'SELECT t.id ' +
+            '     , t.type ' +
+            '     , t.name ' +
+            '     , t.status ' +
+            '     , i.completename as category ' +
+            '     , t.date_creation ' +
+            '     , t.solvedate    as date_solve ' +
             '     , t.date_mod ' +
-            'FROM glpi_tickets t' +
-            '         LEFT JOIN glpi_itilcategories i ON t.itilcategories_id = i.id ' +
-            'WHERE t.id IN (' +
-            '    SELECT tickets_id' +
-            '    FROM glpi_tickets_users' +
-            '    WHERE t.type = 1' +
-            '      AND users_id = (' +
-            '        SELECT id' +
-            '        FROM glpi_users' +
-            `        WHERE name = '${dto.name || ''}'` +
-            '        )' +
-            '    )' +
+            'FROM glpi_tickets t ' +
+            '    LEFT JOIN glpi_itilcategories i ON t.itilcategories_id = i.id ' +
+            'WHERE t.is_deleted = 0 ' +
+            '  AND t.id in ( ' +
+            '    SELECT tu.tickets_id ' +
+            '    FROM glpi_tickets_users tu ' +
+            '    WHERE tu.type = 1 ' +
+            `      AND tu.users_id in (SELECT id FROM glpi_users u WHERE u.name = '${dto.name || ''}') ` +
+            '  ) ' +
             ';')
          if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret)
          else res.status(HttpStatus.BAD_REQUEST).json([]);
@@ -51,19 +48,19 @@ export class GLPI_Service {
    async GetUsersInTicketsByAuthor(dto: IGetUsersInTicketsByAuthorRequestDto, res: Response) {
       try {
          const ret: IGetUsersInTicketsByAuthorResponse[] = await this.glpi.query('' +
-            'SELECT tickets_id                           as ticket_id' +
-            '     , CONCAT(u.realname, \' \', u.firstname) as name' +
-            '     , type ' +
-            'FROM glpi_tickets_users tu' +
-            '    LEFT JOIN glpi_users u ON tu.users_id = u.id ' +
-            'WHERE tickets_id IN (' +
-            '    SELECT tickets_id' +
-            '    FROM glpi_tickets_users tu2' +
-            '        LEFT JOIN glpi_users u2 ON tu2.users_id = u.id' +
-            '    WHERE tu2.type = 1' +
-            `      AND u.name = '${dto.name || ''}'` +
+            'SELECT t.id                                 as ticket_id ' +
+            '     , CONCAT(u.realname, \' \', u.firstname) as name ' +
+            '     , gtu.type ' +
+            'FROM glpi_tickets t ' +
+            '    LEFT JOIN glpi_tickets_users gtu ON gtu.tickets_id = t.id ' +
+            '    INNER JOIN glpi_users u ON u.id = gtu.users_id ' +
+            'WHERE t.is_deleted = 0 ' +
+            '  AND t.id in ( ' +
+            '      SELECT tu.tickets_id ' +
+            '      FROM glpi_tickets_users tu ' +
+            '      WHERE tu.type = 1 ' +
+            `        AND users_id IN (SELECT id FROM glpi_users gu WHERE gu.name = '${dto.name || ''}') ` +
             '    ) ' +
-            'ORDER BY tu.tickets_id' +
             ';')
          if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret)
          else res.status(HttpStatus.BAD_REQUEST).json([]);
