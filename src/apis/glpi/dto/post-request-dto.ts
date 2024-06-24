@@ -62,3 +62,57 @@ export class IGetUsersInTicketsByAuthorResponse {
    @ApiProperty()
    type: number
 }
+
+
+/**
+ * @param {number} id
+ */
+export class IGetTicketInfoRequestDto {
+   @ApiProperty()
+   id: number
+}
+
+
+/**
+ * @param {number} id
+ * @param {string} name
+ * @param {number} status
+ * @param {number} type
+ * @param {string} completename
+ * @param {string} date_creation
+ * @param {string} time_to_resolve
+ * @param {string} solvedate
+ * @param {string} closedate
+ * @param {string} content
+ */
+export class IGetTicketInfoResponse {
+   @ApiProperty()
+   id: number
+
+   @ApiProperty()
+   name: string
+
+   @ApiProperty()
+   status: number
+
+   @ApiProperty()
+   type: number
+
+   @ApiProperty()
+   completename: string
+
+   @ApiProperty()
+   date_creation: string
+
+   @ApiProperty()
+   time_to_resolve: string
+
+   @ApiProperty()
+   solvedate: string
+
+   @ApiProperty()
+   closedate: string
+
+   @ApiProperty()
+   content: string
+}

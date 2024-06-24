@@ -8,7 +8,7 @@ import {
    IGetUserTicketsRequestDto,
    IGetUserTicketsResponse,
    IGetUsersInTicketsByAuthorRequestDto,
-   IGetUsersInTicketsByAuthorResponse,
+   IGetUsersInTicketsByAuthorResponse, IGetTicketInfoResponse, IGetTicketInfoRequestDto,
 } from '~glpi/dto/post-request-dto';
 import { Response } from "express";
 
@@ -33,8 +33,16 @@ export class GLPI_Controller {
    @Header("content-type", "application/json")
    @ApiBody({ required: false, type: IGetUsersInTicketsByAuthorRequestDto })
    @ApiResponse({ type: [IGetUsersInTicketsByAuthorResponse] })
-
    guitba(@Body() dto: IGetUsersInTicketsByAuthorRequestDto, @Res() res: Response) {
       return this.glpiService.GetUsersInTicketsByAuthor(dto, res);
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
+   @Post("/GetTicketInfoByID")
+   @Header("content-type", "application/json")
+   @ApiBody({ required: false, type: IGetTicketInfoRequestDto })
+   @ApiResponse({ type: [IGetTicketInfoResponse] })
+   gtibi(@Body() dto: IGetTicketInfoRequestDto, @Res() res: Response) {
+      return this.glpiService.GetTicketInfoByID(dto, res);
    }
 }

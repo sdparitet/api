@@ -7,7 +7,7 @@ import { GLPI_DB_CONNECTION } from '~root/src/constants';
 import {
    IGetUserTicketsRequestDto,
    IGetUsersInTicketsByAuthorRequestDto,
-   IGetUsersInTicketsByAuthorResponse, IGetUserTicketsResponse,
+   IGetUsersInTicketsByAuthorResponse, IGetUserTicketsResponse, IGetTicketInfoRequestDto, IGetTicketInfoResponse,
 } from '~glpi/dto/post-request-dto';
 
 @Injectable()
@@ -18,6 +18,7 @@ export class GLPI_Service {
 
    async GetUserTickets(dto: IGetUserTicketsRequestDto, res: Response) {
       try {
+         // Check permission = ?
          const ret: IGetUserTicketsResponse[]  = await this.glpi.query('' +
             'SELECT t.id ' +
             '     , t.type ' +
@@ -61,6 +62,31 @@ export class GLPI_Service {
             '      WHERE tu.type = 1 ' +
             `        AND users_id IN (SELECT id FROM glpi_users gu WHERE gu.name = '${dto.name || ''}') ` +
             '    ) ' +
+            ';')
+         if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret)
+         else res.status(HttpStatus.BAD_REQUEST).json([]);
+      }
+      catch (err: any) {
+         return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json(err);
+      }
+   }
+
+   async GetTicketInfoByID(dto: IGetTicketInfoRequestDto, res: Response) {
+      try {
+         const ret: IGetTicketInfoResponse[] = await this.glpi.query('' +
+            'select t.id,              # number ' +
+            '       t.name,            # string ' +
+            '       t.status,          # number ' +
+            '       t.type,            # number ' +
+            '       c.completename,    # string ' +
+            '       t.date_creation,   # string ' +
+            '       t.time_to_resolve, # string ' +
+            '       t.solvedate,       # string ' +
+            '       t.closedate,       # string ' +
+            '       t.content          # string ' +
+            'from glpi_tickets t ' +
+            '    left join glpi_itilcategories c on t.itilcategories_id = c.id ' +
+            `where t.id = ${String(dto.id) || '0'}` +
             ';')
          if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret)
          else res.status(HttpStatus.BAD_REQUEST).json([]);
