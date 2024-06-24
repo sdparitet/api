@@ -31,17 +31,21 @@ export class GLPI_Controller {
    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
    @Post("/GetUsersInTicketsByAuthor")
    @Header("content-type", "application/json")
-   @ApiBody({ required: false, type: IGetUsersInTicketsByAuthorRequestDto })
+   @ApiBody({ required: true, type: IGetUsersInTicketsByAuthorRequestDto })
    @ApiResponse({ type: [IGetUsersInTicketsByAuthorResponse] })
    guitba(@Body() dto: IGetUsersInTicketsByAuthorRequestDto, @Res() res: Response) {
       return this.glpiService.GetUsersInTicketsByAuthor(dto, res);
    }
 
    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
+   // Прописать название апи ручки
    @Post("/GetTicketInfoByID")
    @Header("content-type", "application/json")
-   @ApiBody({ required: false, type: IGetTicketInfoRequestDto })
+   // Прописать тип реквеста
+   @ApiBody({ required: true, type: IGetTicketInfoRequestDto })
+   // Прописать тип ответа
    @ApiResponse({ type: [IGetTicketInfoResponse] })
+   // Прописать тип реквеста
    gtibi(@Body() dto: IGetTicketInfoRequestDto, @Res() res: Response) {
       return this.glpiService.GetTicketInfoByID(dto, res);
    }
