@@ -1,17 +1,18 @@
-import { ApiProperty } from '@nestjs/swagger';
+import {ApiProperty} from '@nestjs/swagger';
 
 /**
  * @param {string} name
  */
 export class IGetUserTicketsRequestDto {
-   @ApiProperty()
-   name: string
+    @ApiProperty()
+    name: string
 }
 
 /**
  * @param {string} name
  */
-export class IGetUsersInTicketsByAuthorRequestDto extends IGetUserTicketsRequestDto {}
+export class IGetUsersInTicketsByAuthorRequestDto extends IGetUserTicketsRequestDto {
+}
 
 
 /**
@@ -24,26 +25,26 @@ export class IGetUsersInTicketsByAuthorRequestDto extends IGetUserTicketsRequest
  * @param {string} date_mod
  */
 export class IGetUserTicketsResponse {
-   @ApiProperty()
-   id: number
+    @ApiProperty()
+    id: number
 
-   @ApiProperty()
-   type: number
+    @ApiProperty()
+    type: number
 
-   @ApiProperty()
-   name: string
+    @ApiProperty()
+    name: string
 
-   @ApiProperty()
-   category: string
+    @ApiProperty()
+    category: string
 
-   @ApiProperty({ example: '2024-01-01T00:00:00.000Z' })
-   date_creation: string
+    @ApiProperty({example: '2024-01-01T00:00:00.000Z'})
+    date_creation: string
 
-   @ApiProperty({ example: '2024-01-01T00:00:00.000Z' })
-   date_solve: string
+    @ApiProperty({example: '2024-01-01T00:00:00.000Z'})
+    date_solve: string
 
-   @ApiProperty({ example: '2024-01-01T00:00:00.000Z' })
-   date_mod: string
+    @ApiProperty({example: '2024-01-01T00:00:00.000Z'})
+    date_mod: string
 }
 
 
@@ -53,14 +54,14 @@ export class IGetUserTicketsResponse {
  * @param {number} type
  */
 export class IGetUsersInTicketsByAuthorResponse {
-   @ApiProperty()
-   ticket_id: number
+    @ApiProperty()
+    ticket_id: number
 
-   @ApiProperty()
-   name: string
+    @ApiProperty()
+    name: string
 
-   @ApiProperty()
-   type: number
+    @ApiProperty()
+    type: number
 }
 
 
@@ -68,8 +69,8 @@ export class IGetUsersInTicketsByAuthorResponse {
  * @param {number} id
  */
 export class IGetTicketInfoRequestDto {
-   @ApiProperty()
-   id: number
+    @ApiProperty()
+    id: number
 }
 
 
@@ -86,33 +87,73 @@ export class IGetTicketInfoRequestDto {
  * @param {string} content
  */
 export class IGetTicketInfoResponse {
-   @ApiProperty()
-   id: number
+    @ApiProperty()
+    id: number
 
-   @ApiProperty()
-   name: string
+    @ApiProperty()
+    name: string
 
-   @ApiProperty()
-   status: number
+    @ApiProperty()
+    status: number
 
-   @ApiProperty()
-   type: number
+    @ApiProperty()
+    type: number
 
-   @ApiProperty()
-   completename: string
+    @ApiProperty()
+    completename: string
 
-   @ApiProperty()
-   date_creation: string
+    @ApiProperty()
+    date_creation: string
 
-   @ApiProperty()
-   time_to_resolve: string
+    @ApiProperty()
+    time_to_resolve: string
 
-   @ApiProperty()
-   solvedate: string
+    @ApiProperty()
+    solvedate: string
 
-   @ApiProperty()
-   closedate: string
+    @ApiProperty()
+    closedate: string
 
-   @ApiProperty()
-   content: string
+    @ApiProperty()
+    content: string
+}
+
+/**
+ * @param {number} id
+ * @param {string} name
+ * @param {number} type
+ * @param {number} itemType
+ */
+export class IGetTicketUsersResponse {
+    @ApiProperty()
+    id: number
+
+    @ApiProperty()
+    name: string
+
+    @ApiProperty()
+    type: number
+
+    @ApiProperty()
+    itemType: number
+}
+
+/**
+ * @param {}
+ */
+export class IGetTicketFollowupsResponse {
+    @ApiProperty()
+    id: number
+
+    @ApiProperty()
+    item_id: number
+
+    @ApiProperty()
+    name: string
+
+    @ApiProperty()
+    content: string
+
+    @ApiProperty()
+    date_creation: string
 }

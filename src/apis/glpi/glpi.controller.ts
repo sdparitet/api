@@ -8,7 +8,11 @@ import {
    IGetUserTicketsRequestDto,
    IGetUserTicketsResponse,
    IGetUsersInTicketsByAuthorRequestDto,
-   IGetUsersInTicketsByAuthorResponse, IGetTicketInfoResponse, IGetTicketInfoRequestDto,
+   IGetUsersInTicketsByAuthorResponse,
+   IGetTicketInfoResponse,
+   IGetTicketInfoRequestDto,
+   IGetTicketUsersResponse,
+   IGetTicketFollowupsResponse,
 } from '~glpi/dto/post-request-dto';
 import { Response } from "express";
 
@@ -38,15 +42,29 @@ export class GLPI_Controller {
    }
 
    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
-   // Прописать название апи ручки
    @Post("/GetTicketInfoByID")
    @Header("content-type", "application/json")
-   // Прописать тип реквеста
    @ApiBody({ required: true, type: IGetTicketInfoRequestDto })
-   // Прописать тип ответа
    @ApiResponse({ type: [IGetTicketInfoResponse] })
-   // Прописать тип реквеста
    gtibi(@Body() dto: IGetTicketInfoRequestDto, @Res() res: Response) {
       return this.glpiService.GetTicketInfoByID(dto, res);
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
+   @Post("/GetTicketUsersByTicketID")
+   @Header("content-type", "application/json")
+   @ApiBody({ required: true, type: IGetTicketInfoRequestDto })
+   @ApiResponse({ type: [IGetTicketUsersResponse] })
+   gtubti(@Body() dto: IGetTicketInfoRequestDto, @Res() res: Response) {
+      return this.glpiService.GetTicketUsersByTicketID(dto, res);
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
+   @Post("/GetTicketFollowupsByTicketID")
+   @Header("content-type", "application/json")
+   @ApiBody({ required: true, type: IGetTicketInfoRequestDto })
+   @ApiResponse({ type: [IGetTicketFollowupsResponse] })
+   gtfbti(@Body() dto: IGetTicketInfoRequestDto, @Res() res: Response) {
+      return this.glpiService.GetTicketFollowupsByTicketID(dto, res);
    }
 }
