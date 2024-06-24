@@ -39,7 +39,7 @@ export class GLPI_Controller {
     @ApiBody({required: true, type: IRequestUsernameDto})
     @ApiResponse({type: [ITicketsMembersResponse]})
     gtm(@Body() dto: IRequestUsernameDto, @Res() res: Response) {
-        return this.glpiService.GetUsersInTicketsByAuthor(dto, res);
+        return this.glpiService.GetTicketsMembers(dto, res);
     }
 
     // endregion

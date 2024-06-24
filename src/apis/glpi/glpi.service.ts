@@ -45,31 +45,31 @@ export class GLPI_Service {
         }
     }
 
-    async GetUsersInTicketsByAuthor(dto: IRequestUsernameDto, res: Response) {
+    async GetTicketsMembers(dto: IRequestUsernameDto, res: Response) {
         try {
             const ret: ITicketsMembersResponse[] = await this.glpi.query('' +
                 'select *                                                                                             ' +
-                'from (select t.id                                 as ticket_id                                       ' +
+                'from (select t.id                                                   as ticket_id                     ' +
                 '     , u.id                                                                                          ' +
-                '     , CONCAT(u.realname, \' \', u.firstname) as name                                                ' +
-                '     , 1                                    as memberType                                            ' +
-                '     , tu.type                              as accessoryType                                         ' +
+                '     , CONCAT(u.realname, \' \', u.firstname)                       as name                          ' +
+                '     , 1                                                            as memberType                    ' +
+                '     , tu.type                                                      as accessoryType                 ' +
                 'from glpi_tickets t                                                                                  ' +
                 '         inner join glpi_tickets_users tu on t.id = tu.tickets_id                                    ' +
                 '         left join glpi_users u on tu.users_id = u.id                                                ' +
                 'union                                                                                                ' +
-                'select t.id    as ticket_id                                                                          ' +
+                'select t.id                                                        as ticket_id                      ' +
                 '     , g.id                                                                                          ' +
                 '     , g.name                                                                                        ' +
-                '     , 2       as memberType                                                                         ' +
-                '     , tg.type as accessoryType                                                                      ' +
+                '     , 2                                                           as memberType                     ' +
+                '     , tg.type                                                     as accessoryType                  ' +
                 'from glpi_tickets t                                                                                  ' +
                 '         inner join glpi_groups_tickets tg on t.id = tg.tickets_id                                   ' +
                 '         left join glpi_groups g on tg.groups_id = g.id) as data                                     ' +
                 'where data.ticket_id in (select tu2.tickets_id                                                       ' +
                 '               from glpi_tickets_users tu2                                                           ' +
                 '               where tu2.type = 1                                                                    ' +
-                `                 and tu2.users_id in (select u2.id from glpi_users u2 where u2.name = ${dto.name})); `)
+                `                 and tu2.users_id in (select u2.id from glpi_users u2 where u2.name = '${dto.name}')); `)
             if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret)
             else res.status(HttpStatus.BAD_REQUEST).json([]);
         } catch (err: any) {
