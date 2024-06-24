@@ -1,30 +1,34 @@
 import {ApiProperty} from '@nestjs/swagger';
 
+/**region [ Global ] */
 /**
  * @param {string} name
  */
-export class IGetUserTicketsRequestDto {
+export class IRequestUsernameDto {
     @ApiProperty()
     name: string
 }
 
 /**
- * @param {string} name
+ * @param {number} id
  */
-export class IGetUsersInTicketsByAuthorRequestDto extends IGetUserTicketsRequestDto {
+export class IRequestTicketIdDto {
+    @ApiProperty()
+    id: number
 }
 
+// endregion
 
+/**region [ Ticket list ] */
 /**
  * @param {number} id
  * @param {number} type
  * @param {string} name
  * @param {string} category
  * @param {string} date_creation
- * @param {string} date_solve
- * @param {string} date_mod
+ * @param {string} time_to_solve
  */
-export class IGetUserTicketsResponse {
+export class IUserTicketsResponse {
     @ApiProperty()
     id: number
 
@@ -41,10 +45,7 @@ export class IGetUserTicketsResponse {
     date_creation: string
 
     @ApiProperty({example: '2024-01-01T00:00:00.000Z'})
-    date_solve: string
-
-    @ApiProperty({example: '2024-01-01T00:00:00.000Z'})
-    date_mod: string
+    time_to_solve: string
 }
 
 
@@ -53,27 +54,27 @@ export class IGetUserTicketsResponse {
  * @param {string} name
  * @param {number} type
  */
-export class IGetUsersInTicketsByAuthorResponse {
+export class ITicketsMembersResponse {
     @ApiProperty()
     ticket_id: number
+
+    @ApiProperty()
+    id: number
 
     @ApiProperty()
     name: string
 
     @ApiProperty()
-    type: number
-}
+    memberType: 1 | 2         // 1 - user, 2 - group
 
-
-/**
- * @param {number} id
- */
-export class IGetTicketInfoRequestDto {
     @ApiProperty()
-    id: number
+    accessoryType: 1 | 2 | 3  // 1 - applicants, 2 - specialists, 3 - watchers
 }
 
+// endregion
 
+//ToDo CHECK & CHANGE
+/**region [ Ticket info ] */
 /**
  * @param {number} id
  * @param {string} name
@@ -157,3 +158,5 @@ export class IGetTicketFollowupsResponse {
     @ApiProperty()
     date_creation: string
 }
+
+// endregion

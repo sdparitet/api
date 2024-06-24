@@ -5,9 +5,8 @@ import {Response} from "express";
 
 import {GLPI_DB_CONNECTION} from '~root/src/constants';
 import {
-    IGetUserTicketsRequestDto,
-    IGetUsersInTicketsByAuthorRequestDto,
-    IGetUsersInTicketsByAuthorResponse, IGetUserTicketsResponse, IGetTicketInfoRequestDto, IGetTicketInfoResponse,
+    IGetTicketInfoResponse, IRequestTicketIdDto,
+    IRequestUsernameDto, ITicketsMembersResponse, IUserTicketsResponse,
 } from '~glpi/dto/post-request-dto';
 
 @Injectable()
@@ -17,18 +16,18 @@ export class GLPI_Service {
     ) {
     }
 
-    async GetUserTickets(dto: IGetUserTicketsRequestDto, res: Response) {
+    /**region [ Ticket list ] */
+    async GetUserTickets(dto: IRequestUsernameDto, res: Response) {
         try {
             // Check permission = ?
-            const ret: IGetUserTicketsResponse[] = await this.glpi.query('' +
+            const ret: IUserTicketsResponse[] = await this.glpi.query('' +
                 'SELECT t.id ' +
                 '     , t.type ' +
                 '     , t.name ' +
                 '     , t.status ' +
                 '     , i.completename as category ' +
                 '     , t.date_creation ' +
-                '     , t.solvedate    as date_solve ' +
-                '     , t.date_mod ' +
+                '     , t.time_to_resolve ' +
                 'FROM glpi_tickets t ' +
                 '    LEFT JOIN glpi_itilcategories i ON t.itilcategories_id = i.id ' +
                 'WHERE t.is_deleted = 0 ' +
@@ -46,23 +45,31 @@ export class GLPI_Service {
         }
     }
 
-    async GetUsersInTicketsByAuthor(dto: IGetUsersInTicketsByAuthorRequestDto, res: Response) {
+    async GetUsersInTicketsByAuthor(dto: IRequestUsernameDto, res: Response) {
         try {
-            const ret: IGetUsersInTicketsByAuthorResponse[] = await this.glpi.query('' +
-                'SELECT t.id                                 as ticket_id ' +
-                '     , CONCAT(u.realname, \' \', u.firstname) as name ' +
-                '     , gtu.type ' +
-                'FROM glpi_tickets t ' +
-                '    LEFT JOIN glpi_tickets_users gtu ON gtu.tickets_id = t.id ' +
-                '    INNER JOIN glpi_users u ON u.id = gtu.users_id ' +
-                'WHERE t.is_deleted = 0 ' +
-                '  AND t.id in ( ' +
-                '      SELECT tu.tickets_id ' +
-                '      FROM glpi_tickets_users tu ' +
-                '      WHERE tu.type = 1 ' +
-                `        AND users_id IN (SELECT id FROM glpi_users gu WHERE gu.name = '${dto.name || ''}') ` +
-                '    ) ' +
-                ';')
+            const ret: ITicketsMembersResponse[] = await this.glpi.query('' +
+                'select *                                                                                             ' +
+                'from (select t.id                                 as ticket_id                                       ' +
+                '     , u.id                                                                                          ' +
+                '     , CONCAT(u.realname, \' \', u.firstname) as name                                                ' +
+                '     , 1                                    as memberType                                            ' +
+                '     , tu.type                              as accessoryType                                         ' +
+                'from glpi_tickets t                                                                                  ' +
+                '         inner join glpi_tickets_users tu on t.id = tu.tickets_id                                    ' +
+                '         left join glpi_users u on tu.users_id = u.id                                                ' +
+                'union                                                                                                ' +
+                'select t.id    as ticket_id                                                                          ' +
+                '     , g.id                                                                                          ' +
+                '     , g.name                                                                                        ' +
+                '     , 2       as memberType                                                                         ' +
+                '     , tg.type as accessoryType                                                                      ' +
+                'from glpi_tickets t                                                                                  ' +
+                '         inner join glpi_groups_tickets tg on t.id = tg.tickets_id                                   ' +
+                '         left join glpi_groups g on tg.groups_id = g.id) as data                                     ' +
+                'where data.ticket_id in (select tu2.tickets_id                                                       ' +
+                '               from glpi_tickets_users tu2                                                           ' +
+                '               where tu2.type = 1                                                                    ' +
+                `                 and tu2.users_id in (select u2.id from glpi_users u2 where u2.name = ${dto.name})); `)
             if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret)
             else res.status(HttpStatus.BAD_REQUEST).json([]);
         } catch (err: any) {
@@ -70,7 +77,11 @@ export class GLPI_Service {
         }
     }
 
-    async GetTicketInfoByID(dto: IGetTicketInfoRequestDto, res: Response) {
+    // endregion
+
+    //ToDo CHECK & CHANGE
+    /**region [ Ticket info ] */
+    async GetTicketInfoByID(dto: IRequestTicketIdDto, res: Response) {
         try {
             const ret: IGetTicketInfoResponse[] = await this.glpi.query('' +
                 'select t.id,                                                      ' +
@@ -95,7 +106,7 @@ export class GLPI_Service {
     }
 
 
-    async GetTicketUsersByTicketID(dto: IGetTicketInfoRequestDto, res: Response) {
+    async GetTicketUsersByTicketID(dto: IRequestTicketIdDto, res: Response) {
         try {
             const ret: IGetTicketInfoResponse[] = await this.glpi.query('' +
                 'select u.id,                                                ' +
@@ -122,7 +133,7 @@ export class GLPI_Service {
         }
     }
 
-    async GetTicketFollowupsByTicketID(dto: IGetTicketInfoRequestDto, res: Response) {
+    async GetTicketFollowupsByTicketID(dto: IRequestTicketIdDto, res: Response) {
         try {
             const ret: IGetTicketInfoResponse[] = await this.glpi.query('' +
                 'select f.id,                                           ' +
@@ -143,4 +154,7 @@ export class GLPI_Service {
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json(err);
         }
     }
+
+    // endregion
+
 }
