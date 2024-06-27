@@ -4,7 +4,7 @@ import {ApiProperty} from '@nestjs/swagger';
 /**
  * @param {string} name
  */
-export class IRequestUsernameDto {
+export class RequestUsernameDto {
     @ApiProperty()
     name: string
 }
@@ -12,14 +12,37 @@ export class IRequestUsernameDto {
 /**
  * @param {number} id
  */
-export class IRequestTicketIdDto {
+export class RequestTicketIdDto {
     @ApiProperty()
     id: number
+}
+
+/**
+ * @param {number} id
+ * @param {string} name
+ */
+export class RequestTicketIdAndUsernameDto {
+    @ApiProperty()
+    id: number
+
+    @ApiProperty()
+    name: string
 }
 
 // endregion
 
 /**region [ Ticket list ] */
+/**
+ * @param {boolean} access
+ */
+export class RequestUserAccessOnTicket {
+    @ApiProperty()
+    access: boolean
+
+    @ApiProperty()
+    found: boolean
+}
+
 /**
  * @param {number} id
  * @param {number} type
@@ -28,7 +51,7 @@ export class IRequestTicketIdDto {
  * @param {string} date_creation
  * @param {string} time_to_solve
  */
-export class IUserTicketsResponse {
+export class UserTicketsResponse {
     @ApiProperty()
     id: number
 
@@ -41,11 +64,17 @@ export class IUserTicketsResponse {
     @ApiProperty()
     category: string
 
+    @ApiProperty()
+    specialists: string
+
+    @ApiProperty()
+    specialistsGroups: string
+
     @ApiProperty({example: '2024-01-01T00:00:00.000Z'})
     date_creation: string
 
     @ApiProperty({example: '2024-01-01T00:00:00.000Z'})
-    time_to_solve: string
+    time_to_resolve: string
 }
 
 
@@ -54,7 +83,7 @@ export class IUserTicketsResponse {
  * @param {string} name
  * @param {number} type
  */
-export class ITicketsMembersResponse {
+export class TicketsMembersResponse {
     @ApiProperty()
     ticket_id: number
 
@@ -73,7 +102,6 @@ export class ITicketsMembersResponse {
 
 // endregion
 
-//ToDo CHECK & CHANGE
 /**region [ Ticket info ] */
 /**
  * @param {number} id
@@ -87,7 +115,7 @@ export class ITicketsMembersResponse {
  * @param {string} closedate
  * @param {string} content
  */
-export class IGetTicketInfoResponse {
+export class GetTicketInfoResponse {
     @ApiProperty()
     id: number
 
@@ -125,7 +153,7 @@ export class IGetTicketInfoResponse {
  * @param {number} type
  * @param {number} itemType
  */
-export class IGetTicketUsersResponse {
+export class GetTicketUsersResponse {
     @ApiProperty()
     id: number
 
@@ -133,16 +161,20 @@ export class IGetTicketUsersResponse {
     name: string
 
     @ApiProperty()
-    type: number
+    accessoryType: number
 
     @ApiProperty()
-    itemType: number
+    memberType: number
 }
 
 /**
- * @param {}
+ * @param {number} id
+ * @param {number} item_id
+ * @param {string} name
+ * @param {string} content
+ * @param {string} date_creation
  */
-export class IGetTicketFollowupsResponse {
+export class GetTicketFollowupsResponse {
     @ApiProperty()
     id: number
 
@@ -157,6 +189,30 @@ export class IGetTicketFollowupsResponse {
 
     @ApiProperty()
     date_creation: string
+}
+
+/**
+ * @param {number} ticket_id
+ * @param {string} username
+ * @param {string} content
+ */
+export class SetTicketFollowupsDto {
+    @ApiProperty()
+    ticket_id: number
+
+    @ApiProperty()
+    username: string
+
+    @ApiProperty()
+    content: string
+}
+
+/**
+ * @param {boolean} success
+ */
+export class SetTicketFollowupsResponse {
+    @ApiProperty()
+    access: boolean
 }
 
 // endregion

@@ -5,13 +5,16 @@ import {GlobalRoles} from '~roles/All-roles';
 import {GLPI_Roles} from '~roles/glpi.roles';
 import {GLPI_Service} from '~glpi/glpi.service';
 import {
-    IGetTicketInfoResponse,
-    IGetTicketUsersResponse,
-    IGetTicketFollowupsResponse,
-    IRequestUsernameDto,
-    IRequestTicketIdDto,
-    IUserTicketsResponse,
-    ITicketsMembersResponse,
+    GetTicketInfoResponse,
+    GetTicketUsersResponse,
+    GetTicketFollowupsResponse,
+    RequestUsernameDto,
+    RequestTicketIdDto,
+    UserTicketsResponse,
+    TicketsMembersResponse,
+    RequestTicketIdAndUsernameDto,
+    SetTicketFollowupsDto,
+    SetTicketFollowupsResponse, RequestUserAccessOnTicket,
 } from '~glpi/dto/post-request-dto';
 import {Response} from "express";
 
@@ -27,50 +30,67 @@ export class GLPI_Controller {
     @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
     @Post("/GetUserTickets")
     @Header("content-type", "application/json")
-    @ApiBody({required: false, type: IRequestUsernameDto})
-    @ApiResponse({type: [IUserTicketsResponse]})
-    gut(@Body() dto: IRequestUsernameDto, @Res() res: Response) {
+    @ApiBody({required: false, type: RequestUsernameDto})
+    @ApiResponse({type: [UserTicketsResponse]})
+    gut(@Body() dto: RequestUsernameDto, @Res() res: Response) {
         return this.glpiService.GetUserTickets(dto, res);
     }
 
     @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
     @Post("/GetTicketsMembers")
     @Header("content-type", "application/json")
-    @ApiBody({required: true, type: IRequestUsernameDto})
-    @ApiResponse({type: [ITicketsMembersResponse]})
-    gtm(@Body() dto: IRequestUsernameDto, @Res() res: Response) {
+    @ApiBody({required: true, type: RequestUsernameDto})
+    @ApiResponse({type: [TicketsMembersResponse]})
+    gtm(@Body() dto: RequestUsernameDto, @Res() res: Response) {
         return this.glpiService.GetTicketsMembers(dto, res);
     }
 
     // endregion
 
-    //ToDo CHECK & CHANGE
     /**region [ Ticket info ] */
     @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
-    @Post("/GetTicketInfoByID")
+    @Post("/GetUserAccessOnTicket")
     @Header("content-type", "application/json")
-    @ApiBody({required: true, type: IRequestTicketIdDto})
-    @ApiResponse({type: [IGetTicketInfoResponse]})
-    gtibi(@Body() dto: IRequestTicketIdDto, @Res() res: Response) {
-        return this.glpiService.GetTicketInfoByID(dto, res);
+    @ApiBody({required: true, type: RequestTicketIdAndUsernameDto})
+    @ApiResponse({type: [RequestUserAccessOnTicket]})
+    guaot(@Body() dto: RequestTicketIdAndUsernameDto, @Res() res: Response) {
+        return this.glpiService.GetUserAccessOnTicket(dto, res);
     }
 
     @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
-    @Post("/GetTicketUsersByTicketID")
+    @Post("/GetTicketInfo")
     @Header("content-type", "application/json")
-    @ApiBody({required: true, type: IRequestTicketIdDto})
-    @ApiResponse({type: [IGetTicketUsersResponse]})
-    gtubti(@Body() dto: IRequestTicketIdDto, @Res() res: Response) {
-        return this.glpiService.GetTicketUsersByTicketID(dto, res);
+    @ApiBody({required: true, type: RequestTicketIdAndUsernameDto})
+    @ApiResponse({type: [GetTicketInfoResponse]})
+    gtibi(@Body() dto: RequestTicketIdAndUsernameDto, @Res() res: Response) {
+        return this.glpiService.GetTicketInfo(dto, res);
     }
 
     @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
-    @Post("/GetTicketFollowupsByTicketID")
+    @Post("/GetTicketMembers")
     @Header("content-type", "application/json")
-    @ApiBody({required: true, type: IRequestTicketIdDto})
-    @ApiResponse({type: [IGetTicketFollowupsResponse]})
-    gtfbti(@Body() dto: IRequestTicketIdDto, @Res() res: Response) {
-        return this.glpiService.GetTicketFollowupsByTicketID(dto, res);
+    @ApiBody({required: true, type: RequestTicketIdDto})
+    @ApiResponse({type: [GetTicketUsersResponse]})
+    gtubti(@Body() dto: RequestTicketIdDto, @Res() res: Response) {
+        return this.glpiService.GetTicketMembers(dto, res);
+    }
+
+    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
+    @Post("/GetTicketChat")
+    @Header("content-type", "application/json")
+    @ApiBody({required: true, type: RequestTicketIdAndUsernameDto})
+    @ApiResponse({type: [GetTicketFollowupsResponse]})
+    gtfbti(@Body() dto: RequestTicketIdAndUsernameDto, @Res() res: Response) {
+        return this.glpiService.GetTicketFollowups(dto, res);
+    }
+
+    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
+    @Post("/SetTicketFollowup")
+    @Header("content-type", "application/json")
+    @ApiBody({required: true, type: SetTicketFollowupsDto})
+    @ApiResponse({type: [SetTicketFollowupsResponse]})
+    stf(@Body() dto: SetTicketFollowupsDto, @Res() res: Response) {
+        return this.glpiService.SetTicketFollowup(dto, res);
     }
 
     // endregion
