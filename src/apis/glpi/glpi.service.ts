@@ -17,6 +17,7 @@ import {
     TicketsMembersResponse,
     UserTicketsResponse,
 } from '~glpi/dto/post-request-dto';
+import {GetGlpiUsersInGroupsResponse} from "~glpi/dto/get-request-dto";
 
 @Injectable()
 export class GLPI_Service {
@@ -202,4 +203,30 @@ export class GLPI_Service {
 
     // endregion
 
+    /** region [ Phonebook ] */
+    async GetGlpiUsersInGroups(res: Response) {
+        try {
+            const ret: GetGlpiUsersInGroupsResponse[] = await this.glpi.query('' +
+                'select                                                 ' +
+                '     u.groups_id as group_id,                          ' +
+                '     g.name as group_name,                             ' +
+                '     u.id,                                             ' +
+                '     CONCAT(u.firstname, \' \', u.realname) as name,   ' +
+                '     um.email,                                         ' +
+                '     u.phone                                           ' +
+                'from glpi_users u                                      ' +
+                '     left join glpi_useremails um                      ' +
+                '         on u.id = um.users_id                         ' +
+                '     left join glpi_groups g                           ' +
+                '         on u.groups_id = g.id                         ' +
+                'where um.is_default = 1 and u.groups_id <> 0           ' +
+                'order by g.name, name;                                 ')
+            if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret)
+            else res.status(HttpStatus.BAD_REQUEST).json([]);
+        } catch (err: any) {
+            return res.status(HttpStatus.INTERNAL_SERVER_ERROR).json(err);
+        }
+    }
+
+    // endregion
 }
