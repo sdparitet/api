@@ -1,4 +1,4 @@
-import {Body, Controller, Get, Header, Post, Res} from "@nestjs/common";
+import {Body, Controller, Get, Header, Post, Res, UploadedFile, UseInterceptors} from "@nestjs/common";
 import {ApiTags, ApiBody, ApiResponse} from '@nestjs/swagger';
 import {Roles} from '~guards/roles-auth.decorator';
 import {GlobalRoles} from '~roles/All-roles';
@@ -14,12 +14,16 @@ import {
     TicketsMembersResponse,
     RequestTicketIdAndUsernameDto,
     SetTicketFollowupsDto,
-    SetTicketFollowupsResponse, RequestUserAccessOnTicket,
+    SetTicketFollowupsResponse,
+    RequestUserAccessOnTicket,
+    RequestDownloadDocumentDto,
+    RequestFileUploadDto, CreateTicketFollowupDto,
 } from '~glpi/dto/post-request-dto';
-import {Response} from "express";
+import {Response, Express} from "express";
 
 import {GLPI_DB_CONNECTION} from '~root/src/constants';
 import {GetGlpiUsersInGroupsResponse} from "~glpi/dto/get-request-dto";
+import {FileInterceptor} from "@nestjs/platform-express";
 
 @ApiTags(GLPI_DB_CONNECTION)
 @Controller("glpi")
@@ -82,7 +86,7 @@ export class GLPI_Controller {
     @ApiBody({required: true, type: RequestTicketIdAndUsernameDto})
     @ApiResponse({type: [GetTicketFollowupsResponse]})
     gtfbti(@Body() dto: RequestTicketIdAndUsernameDto, @Res() res: Response) {
-        return this.glpiService.GetTicketFollowups(dto, res);
+        return this.glpiService.GetTicketChat(dto, res);
     }
 
     @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
@@ -103,6 +107,33 @@ export class GLPI_Controller {
     @ApiResponse({type: [GetGlpiUsersInGroupsResponse]})
     gguig(@Res() res: Response) {
         return this.glpiService.GetGlpiUsersInGroups(res);
+    }
+
+    // endregion
+
+    /**region [Test] */
+    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
+    @Get("/CreateTicketFollowup")
+    @Header("content-type", "application/json")
+    @ApiBody({required: true, type: CreateTicketFollowupDto})
+    // @ApiResponse({type: [CreateTicketFollowupDto]})
+    ctf(@Body() dto: CreateTicketFollowupDto, @Res() res: Response) {
+        return this.glpiService.CreateTicketFollowup(dto, res);
+    }
+
+    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
+    @Post("/UploadTicketDocument")
+    @UseInterceptors(FileInterceptor('file'))
+    ud(@UploadedFile() file: Express.Multer.File, @Body() dto: RequestFileUploadDto, @Res() res: Response) {
+        return this.glpiService.UploadTicketDocument(file, dto, res);
+    }
+
+    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
+    @Post("/DownloadDocument")
+    @Header("content-type", "application/octet-stream")
+    @ApiBody({required: true, type: RequestDownloadDocumentDto})
+    dd(@Body() dto: RequestDownloadDocumentDto, @Res() res: Response) {
+        return this.glpiService.DownloadDocument(dto, res);
     }
 
     // endregion

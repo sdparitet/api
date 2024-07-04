@@ -142,9 +142,6 @@ export class GetTicketInfoResponse {
 
     @ApiProperty()
     closedate: string
-
-    @ApiProperty()
-    content: string
 }
 
 /**
@@ -168,18 +165,26 @@ export class GetTicketUsersResponse {
 }
 
 /**
+ * @param {string} type
  * @param {number} id
  * @param {number} item_id
  * @param {string} name
  * @param {string} content
- * @param {string} date_creation
+ * @param {string} data
+ * @param {string} date
  */
 export class GetTicketFollowupsResponse {
+    @ApiProperty()
+    type: string
+
     @ApiProperty()
     id: number
 
     @ApiProperty()
-    item_id: number
+    ticket_id: number
+
+    @ApiProperty()
+    author_type: number
 
     @ApiProperty()
     name: string
@@ -188,7 +193,10 @@ export class GetTicketFollowupsResponse {
     content: string
 
     @ApiProperty()
-    date_creation: string
+    data: string
+
+    @ApiProperty()
+    date: string
 }
 
 /**
@@ -213,6 +221,49 @@ export class SetTicketFollowupsDto {
 export class SetTicketFollowupsResponse {
     @ApiProperty()
     access: boolean
+}
+
+// endregion
+
+/**region [ Test ] */
+export class RequestBaseDto {
+    @ApiProperty()
+    username: string
+}
+
+export class CreateTicketFollowupDto {
+    @ApiProperty()
+    ticket_id: number
+
+    @ApiProperty()
+    username: string
+
+    @ApiProperty()
+    content: string
+}
+
+/**
+ * @param {string} username
+ * @param {number} ticket_id
+ */
+export class RequestFileUploadDto {
+    @ApiProperty()
+    username: string
+
+    @ApiProperty()
+    ticket_id: number
+}
+
+/**
+ * @param {string} username
+ * @param {number} id
+ */
+export class RequestDownloadDocumentDto {
+    @ApiProperty()
+    name: string
+
+    @ApiProperty()
+    id: number
 }
 
 // endregion

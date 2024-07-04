@@ -27,7 +27,7 @@ $publish = Read-Host -Prompt "`nPublish? [(Y)es/(N)o]"
 $pass = @('Y','y','Yes','YES','yes')
 if ($pass -contains $publish)
 {
-   Write-output '`nPublishing...'
+   Write-output 'Publishing...'
    docker image push ${image_name}:latest
    docker image push ${image_name}:$version
 }
