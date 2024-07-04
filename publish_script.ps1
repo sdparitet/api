@@ -28,8 +28,8 @@ $pass = @('Y','y','Yes','YES','yes')
 if ($pass -contains $publish)
 {
    Write-output 'Publishing...'
-   docker image push ${image_name}:latest
    docker image push ${image_name}:$version
+   docker image push ${image_name}:latest
 }
 
 Write-output "`nDone."
