@@ -1,15 +1,13 @@
 import {AxiosResponse} from "axios";
-import {Express} from "express";
 import {InjectDataSource} from "@nestjs/typeorm";
 import {GLPI_DB_CONNECTION} from "~root/src/constants";
 import {DataSource} from "typeorm";
 import {IGlpiUserToken} from "~root/src/connectors/glpi/types";
-
 export class GLPI {
     private session = require('axios')
 
-    private readonly _baseUrl = process.env.GLPI_API_URL
-    private readonly _appToken = process.env.GLPI_API_TOKEN
+    private readonly _baseUrl = process.env.GLPI_API_URL || 'https://sd.paritet.su/apirest.php/'
+    private readonly _appToken = process.env.GLPI_API_TOKEN || 'Aeyv64RRYChfYpHVTWmf1mrNBRpmkNK8EjrU43rh'
     private _username: string
     private _userToken: string
     sessionToken: string
@@ -130,8 +128,9 @@ export class GLPI {
     }
 
     async download_document(docId: number) {
-        // console.log('Doc id: ', docId)
-        // console.log('Headers: ', this.session.defaults.headers)
+
+
+
 
         const headers = {
             'Accept': 'application/octet-stream',
@@ -140,17 +139,9 @@ export class GLPI {
             headers: headers,
             responseType: 'arraybuffer'
         }).then((response: AxiosResponse) => {
-            // console.log('Request token: ', this._userToken)
-            // console.log('Session token: ', this.sessionToken)
-            // console.log('Status: ', response.status)
-            // console.log('Data: ', response.data)
-            // console.log('Response headers: ', response.headers)
-
-            const filenameRegexp = /filename="(.*)"/
-            const filename = filenameRegexp.exec(response.headers['content-disposition'])[1]
-            // const filename = 'test.txt'
+            const mime = response.headers['content-type']
             const {data, status} = response
-            return {status: status, data: data, filename: filename}
+            return {status: status, data: data, mime: mime}
         })
     }
 }

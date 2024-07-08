@@ -1,4 +1,4 @@
-import {Injectable, HttpStatus} from "@nestjs/common";
+import {Injectable, HttpStatus, Inject} from "@nestjs/common";
 import {InjectDataSource} from "@nestjs/typeorm";
 import {DataSource} from "typeorm";
 import {Express, Response} from "express";
@@ -17,13 +17,17 @@ import {
     TicketsMembersResponse,
     UserTicketsResponse,
 } from '~glpi/dto/post-request-dto';
-import {GetGlpiUsersInGroupsResponse} from "~glpi/dto/get-request-dto";
+import {GetGlpiUsersInGroupsResponse, GetTestParams} from "~glpi/dto/get-request-dto";
 import {GLPI} from "~root/src/connectors/glpi/glpi.connector";
+import {CACHE_MANAGER} from "@nestjs/cache-manager";
+import {Cache} from "cache-manager";
+import sharp, {Sharp} from "sharp";
 
 @Injectable()
 export class GLPI_Service {
     constructor(
-        @InjectDataSource(GLPI_DB_CONNECTION) private readonly glpi: DataSource
+        @InjectDataSource(GLPI_DB_CONNECTION) private readonly glpi: DataSource,
+        @Inject(CACHE_MANAGER) private cacheService: Cache,
     ) {
     }
 
@@ -162,62 +166,55 @@ export class GLPI_Service {
     async GetTicketChat(dto: RequestTicketIdAndUsernameDto, res: Response) {
         try {
             const ret: GetTicketFollowupsResponse[] = await this.glpi.query('' +
-                'select \'Followup\'                           as type,                                             ' +
-                '       f.id,                                                                                       ' +
-                '       f.items_id                             as ticketId,                                         ' +
-                `       if(u.name = \'${dto.name}\', 1, 2)     as authorType,                                       ` +
-                '       CONCAT(u.firstname, \' \', u.realname) as name,                                             ' +
-                '       f.content,                                                                                  ' +
-                '       \'\'                                   as data,                                             ' +
-                '       f.date_creation                        as date                                              ' +
-                'from glpi_itilfollowups f                                                                          ' +
-                '         left join glpi_users u on f.users_id = u.id                                               ' +
-                'where itemtype = \'Ticket\'                                                                        ' +
-                `  and items_id = ${dto.id}                                                                         ` +
-                '  and is_private = 0                                                                               ' +
-                'union                                                                                              ' +
-                'select \'File\'                               as type,                                             ' +
-                '       d.id,                                                                                       ' +
-                '       di.items_id                            as ticketId,                                         ' +
-                `       if(u.name = \'${dto.name}\', 1, 2)     as authorType,                                       ` +
-                '       CONCAT(u.firstname, \' \', u.realname) as name,                                             ' +
-                '       d.filename                             as content,                                          ' +
-                '       d.mime                                 as data,                                             ' +
-                '       di.date_creation                       as date                                              ' +
-                'from glpi_documents_items di                                                                       ' +
-                '         left join glpi_users u on di.users_id = u.id                                              ' +
-                '         left join glpi_documents d on di.documents_id = d.id                                      ' +
-                'where itemtype = \'Ticket\'                                                                        ' +
-                `  and items_id = ${dto.id}                                                                         ` +
-                'union                                                                                              ' +
-                'select \'Solution\'                           as type,                                             ' +
-                '       s.id,                                                                                       ' +
-                '       s.items_id                             as ticketId,                                         ' +
-                '       2                                      as authorType,                                       ' +
-                '       CONCAT(u.firstname, \' \', u.realname) as name,                                             ' +
-                '       s.content,                                                                                  ' +
-                '       s.status                               as data,                                             ' +
-                '       s.date_creation                        as date                                              ' +
-                'from glpi_itilsolutions s                                                                          ' +
-                '         left join glpi_users u on s.users_id = u.id                                               ' +
-                'where s.itemtype = \'Ticket\'                                                                      ' +
-                `  and items_id = ${dto.id}                                                                         ` +
-                'union                                                                                              ' +
-                'select \'Description\'                                   as type,                                  ' +
-                '       t.id,                                                                                       ' +
-                '       t.id                                              as ticketId,                              ' +
-                '       1                                                 as authorType,                            ' +
-                '       (select CONCAT(u.firstname, \' \', u.realname)                                              ' +
-                '        from glpi_users u                                                                          ' +
-                '        where id = ((select users_id                                                               ' +
-                '           from glpi_tickets_users tu                                                              ' +
-                '           where tu.tickets_id = 5866 and tu.type = 1))) as name,                                  ' +
-                '       t.content,                                                                                  ' +
-                '       \'\'                                              as data,                                  ' +
-                '       t.date_creation                                   as date                                   ' +
-                'from glpi_tickets t                                                                                ' +
-                `where id = ${dto.id}                                                                               ` +
-                'order by date;                                                                                     ')
+                'select CONCAT(u.firstname, \' \', u.realname) as name,                         ' +
+                `       if(u.name = \'${dto.name}\', 0, 1)     as sideLeft,                     ` +
+                '       f.id                                   as id,                           ' +
+                '       \'Message\'                            as type,                         ' +
+                '       f.content                              as text,                         ' +
+                '       f.date_creation                        as time                          ' +
+                'from glpi_itilfollowups f                                                      ' +
+                '         left join glpi_users u on f.users_id = u.id                           ' +
+                'where itemtype = \'Ticket\'                                                    ' +
+                `  and items_id = ${dto.id}                                                     ` +
+                '  and is_private = 0                                                           ' +
+                'union                                                                          ' +
+                'select CONCAT(u.firstname, \' \', u.realname)                   as name,       ' +
+                `       if(u.name = \'${dto.name}\', 0, 1)                       as sideLeft,   ` +
+                '       d.id                                                     as id,         ' +
+                '       if(d.mime REGEXP \'^image\\/.*$\', \'Image\', \'File\')  as type,       ' +
+                '       d.filename                                               as text,       ' +
+                '       di.date_creation                                         as time        ' +
+                'from glpi_documents_items di                                                   ' +
+                '         left join glpi_users u on di.users_id = u.id                          ' +
+                '         left join glpi_documents d on di.documents_id = d.id                  ' +
+                'where itemtype = \'Ticket\'                                                    ' +
+                `  and items_id = ${dto.id}                                                     ` +
+                'union                                                                          ' +
+                'select CONCAT(u.firstname, \' \', u.realname) as name,                         ' +
+                '       if(u.name = \'Welz\', 0, 1)            as sideLeft,                     ' +
+                '       s.id                                   as id,                           ' +
+                '       \'Solution\'                           as type,                         ' +
+                '       s.content                              as text,                         ' +
+                '       s.date_creation                        as time                          ' +
+                'from glpi_itilsolutions s                                                      ' +
+                '         left join glpi_users u on s.users_id = u.id                           ' +
+                'where s.itemtype = \'Ticket\'                                                  ' +
+                `  and items_id = ${dto.id}                                                     ` +
+                'union                                                                          ' +
+                'select (select CONCAT(u.firstname, \' \', u.realname)                          ' +
+                '        from glpi_users u                                                      ' +
+                '        where id = ((select users_id                                           ' +
+                '                     from glpi_tickets_users tu                                ' +
+                `                     where tu.tickets_id = ${dto.id}                           ` +
+                '                       and tu.type = 1))) as name,                             ' +
+                '       0                                  as sideLeft,                         ' +
+                '       t.id                               as id,                               ' +
+                '       \'Message\'                        as type,                             ' +
+                '       t.content                          as text,                             ' +
+                '       t.date_creation                    as time                              ' +
+                'from glpi_tickets t                                                            ' +
+                `where id = ${dto.id}                                                           ` +
+                'order by time;                                                                 ')
             if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret)
             else res.status(HttpStatus.BAD_REQUEST).json([]);
         } catch (err: any) {
@@ -314,6 +311,146 @@ export class GLPI_Service {
         })
     }
 
-    //endregion
+    async CompressImage(image: Sharp) {
 
+        const maxWidth = 480
+        const maxHeight = 400
+        const maxRelation = 20
+
+        const meta = await image.metadata()
+        const isHorizontal = meta.width > meta.height
+        // const foo: boolean = (Math.max(meta.width, meta.height) / Math.min(meta.width, meta.height)) > maxRelation
+        // const w1 = isHorizontal && Math.round(maxWidth)
+        // const h1 = isHorizontal && Math.round(meta.height * maxWidth / meta.width)
+        // const w2 = !isHorizontal && Math.round(meta.width * maxHeight / meta.height)
+        // const h2 = !isHorizontal && Math.round(maxHeight)
+        //
+        // console.log('Resizable: ', foo)
+        // console.log('Resize from w: ' + meta.width + ' h: ' + meta.height)
+        //
+        // console.log('1 Resize to w: ' + w1 + ' h: ' + h1)
+        // console.log('2 Resize to w: ' + w2 + ' h: ' + h2)
+
+
+        if ((Math.max(meta.width, meta.height) / Math.min(meta.width, meta.height)) > maxRelation) {
+            return null
+        } else {
+            if (isHorizontal) {
+                if (meta.width > maxWidth) {
+                    console.log('1')
+                    return image.resize(Math.round(maxWidth), Math.round(meta.height * maxWidth / meta.width)).toBuffer()
+                } else {
+                    console.log('2')
+                    return image.toBuffer()
+                }
+            } else {
+                if (meta.width > maxWidth) {
+                    console.log('3')
+                    return image.resize(Math.round(meta.width * maxHeight / meta.height), Math.round(maxHeight)).toBuffer()
+                } else {
+                    console.log('4')
+                    return image.toBuffer()
+                }
+            }
+        }
+    }
+
+    async GetImagePreview(params: GetTestParams, res: Response) {
+        const cachedData: string = await this.cacheService.get(params.id.toString())
+        const ttl = 60 * 60 * 24 * 14
+        if (cachedData) {
+            res.status(HttpStatus.OK).json(JSON.parse(cachedData))
+        } else {
+            let filename = 'unknown.file'
+            const _ret = await this.glpi.query(`select filename from glpi_documents where id = '${params.id}';`)
+            if (_ret) {
+                filename = _ret[0].filename
+            }
+            await this.GlpiApiWrapper(params.username, this.glpi, res, async (glpi) => {
+                const ret = await glpi.download_document(params.id)
+                if (ret.status === HttpStatus.OK) {
+                    if (ret.mime.split('/').length > 0 && ret.mime.split('/')[0] === 'image') {
+                        const sharp = require('sharp')
+                        const image = await sharp(Buffer.from(ret.data, "base64"))
+
+                        let compressedImageBuffer: Buffer | null = await this.CompressImage(image)
+
+                        if (compressedImageBuffer !== null) {
+                            const compressedImage = await sharp(compressedImageBuffer)
+                            const compressedMeta = await compressedImage.metadata()
+                            console.log('W: ' + compressedMeta.width + ' H: ' + compressedMeta.height)
+                            const bufferData = await compressedImage.toBuffer()
+                            res.status(ret.status).json({
+                                id: params.id,
+                                asFile: false,
+                                fileName: filename,
+                                fileSize: ret.data.length,
+                                fileWidth: compressedMeta.width,
+                                fileHeight: compressedMeta.height,
+                                mime: ret.mime,
+                                base64: bufferData.toString('base64'),
+                            })
+
+                            await this.cacheService.set(params.id.toString(), JSON.stringify({
+                                id: params.id,
+                                asFile: false,
+                                fileName: filename,
+                                fileSize: compressedMeta.size,
+                                fileWidth: compressedMeta.width,
+                                fileHeight: compressedMeta.height,
+                                mime: ret.mime,
+                                base64: bufferData.toString('base64'),
+                            }), ttl)
+                        } else {
+                            res.status(ret.status).json({
+                                id: params.id,
+                                asFile: true,
+                                fileName: filename,
+                                fileSize: ret.data.length,
+                                fileWidth: 0,
+                                fileHeight: 0,
+                                mime: ret.mime,
+                                base64: ret.data.toString('base64'),
+                            })
+                            await this.cacheService.set(params.id.toString(), JSON.stringify({
+                                id: params.id,
+                                asFile: true,
+                                fileName: filename,
+                                fileSize: ret.data.length,
+                                fileWidth: 0,
+                                fileHeight: 0,
+                                mime: ret.mime,
+                                base64: ret.data.toString('base64'),
+                            }), ttl)
+                        }
+                    } else {
+                        res.status(ret.status).json({
+                            id: params.id,
+                            asFile: true,
+                            fileName: filename,
+                            fileSize: ret.data.length,
+                            fileWidth: 0,
+                            fileHeight: 0,
+                            mime: ret.mime,
+                            base64: ret.data.toString('base64'),
+                        })
+                        await this.cacheService.set(params.id.toString(), JSON.stringify({
+                            id: params.id,
+                            asFile: true,
+                            fileName: filename,
+                            fileSize: ret.data.length,
+                            fileWidth: 0,
+                            fileHeight: 0,
+                            mime: ret.mime,
+                            base64: ret.data.toString('base64'),
+                        }), ttl)
+                    }
+                } else {
+                    res.status(ret.status).json([])
+                }
+            })
+        }
+    }
+
+    //endregion
 }

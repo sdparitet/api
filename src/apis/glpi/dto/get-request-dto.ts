@@ -1,4 +1,4 @@
-import {ApiProperty} from "@nestjs/swagger";
+import {ApiParam, ApiProperty} from "@nestjs/swagger";
 
 /**
  * @param {number} group_id
@@ -27,4 +27,14 @@ export class GetGlpiUsersInGroupsResponse {
 
     @ApiProperty()
     phone: string
+}
+
+
+export class GetTestParams {
+    @ApiProperty()
+    id: number
+
+    @ApiProperty()
+    username: string
+
 }

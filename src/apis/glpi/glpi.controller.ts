@@ -1,4 +1,14 @@
-import {Body, Controller, Get, Header, Post, Res, UploadedFile, UseInterceptors} from "@nestjs/common";
+import {
+    Body,
+    Controller,
+    Get,
+    Header,
+    Inject, Param,
+    Post, Query,
+    Res,
+    UploadedFile,
+    UseInterceptors
+} from "@nestjs/common";
 import {ApiTags, ApiBody, ApiResponse} from '@nestjs/swagger';
 import {Roles} from '~guards/roles-auth.decorator';
 import {GlobalRoles} from '~roles/All-roles';
@@ -17,18 +27,23 @@ import {
     SetTicketFollowupsResponse,
     RequestUserAccessOnTicket,
     RequestDownloadDocumentDto,
-    RequestFileUploadDto, CreateTicketFollowupDto,
+    RequestFileUploadDto, CreateTicketFollowupDto, ResponseGetImagePreviewDto,
 } from '~glpi/dto/post-request-dto';
 import {Response, Express} from "express";
+import {Cache} from 'cache-manager'
+import {CACHE_MANAGER} from '@nestjs/cache-manager'
 
 import {GLPI_DB_CONNECTION} from '~root/src/constants';
-import {GetGlpiUsersInGroupsResponse} from "~glpi/dto/get-request-dto";
+import {GetGlpiUsersInGroupsResponse, GetTestParams} from "~glpi/dto/get-request-dto";
 import {FileInterceptor} from "@nestjs/platform-express";
+import {CacheInterceptor, CacheKey, CacheTTL} from "@nestjs/cache-manager";
 
 @ApiTags(GLPI_DB_CONNECTION)
 @Controller("glpi")
 export class GLPI_Controller {
-    constructor(private glpiService: GLPI_Service) {
+    constructor(
+        private glpiService: GLPI_Service,
+    ) {
     }
 
     /**region [ Ticket list ] */
@@ -134,6 +149,14 @@ export class GLPI_Controller {
     @ApiBody({required: true, type: RequestDownloadDocumentDto})
     dd(@Body() dto: RequestDownloadDocumentDto, @Res() res: Response) {
         return this.glpiService.DownloadDocument(dto, res);
+    }
+
+    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
+    @Get("/GetImagePreview")
+    @Header("content-type", "application/json; charset=utf-8")
+    @ApiResponse({type: [ResponseGetImagePreviewDto]})
+    test(@Query() params: GetTestParams, @Res() res: Response) {
+        return this.glpiService.GetImagePreview(params, res);
     }
 
     // endregion

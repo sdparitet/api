@@ -196,7 +196,7 @@ export class GetTicketFollowupsResponse {
     data: string
 
     @ApiProperty()
-    date: string
+    time: string
 }
 
 /**
@@ -264,6 +264,43 @@ export class RequestDownloadDocumentDto {
 
     @ApiProperty()
     id: number
+}
+
+/**
+ * @param {number} id
+ * @param {boolean} asFile
+ * @param {string} fileName
+ * @param {number} fileSize
+ * @param {number} fileWidth
+ * @param {number} fileHeight
+ * @param {string} mime
+ * @param {string} base64
+ */
+export class ResponseGetImagePreviewDto {
+
+    @ApiProperty()
+    id: number
+
+    @ApiProperty()
+    asFile: boolean
+
+    @ApiProperty()
+    fileName: string
+
+    @ApiProperty()
+    fileSize: number
+
+    @ApiProperty()
+    fileWidth: number
+
+    @ApiProperty()
+    fileHeight: number
+
+    @ApiProperty()
+    mime: string
+
+    @ApiProperty()
+    base64: string
 }
 
 // endregion
