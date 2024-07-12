@@ -17,15 +17,16 @@ import * as redisStore from 'cache-manager-redis-store';
     controllers: [],
     providers: [JwtService],
     imports: [
-        CacheModule.register({
-            isGlobal: true,
-            store: redisStore,
-            host: '172.19.14.13',
-            port: 6379,
-        }),
         ConfigModule.forRoot({
             envFilePath: `.env.${process.env.NODE_ENV}`,
         }),
+
+        // CacheModule.register({
+        //     isGlobal: true,
+        //     store: redisStore,
+        //     host: process.env.REDIS_HOST,
+        //     port: process.env.REDIS_PORT,
+        // }),
 
         TypeOrmModule.forRoot({
             name: KPI_DB_CONNECTION,

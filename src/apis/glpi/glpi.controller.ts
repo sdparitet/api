@@ -3,7 +3,6 @@ import {
     Controller,
     Get,
     Header,
-    Inject, Param,
     Post, Query,
     Res,
     UploadedFile,
@@ -15,28 +14,27 @@ import {GlobalRoles} from '~roles/All-roles';
 import {GLPI_Roles} from '~roles/glpi.roles';
 import {GLPI_Service} from '~glpi/glpi.service';
 import {
-    GetTicketInfoResponse,
-    GetTicketUsersResponse,
-    GetTicketFollowupsResponse,
+    TicketInfoResponse,
+    TicketMembersResponse,
+    TicketChatResponse,
     RequestUsernameDto,
     RequestTicketIdDto,
     UserTicketsResponse,
     TicketsMembersResponse,
     RequestTicketIdAndUsernameDto,
-    SetTicketFollowupsDto,
-    SetTicketFollowupsResponse,
-    RequestUserAccessOnTicket,
-    RequestDownloadDocumentDto,
-    RequestFileUploadDto, CreateTicketFollowupDto, ResponseGetImagePreviewDto,
+    TicketFollowupDto,
+    TicketFollowupsResponse,
+    UserAccessOnTicket,
+    CreateTicketFollowupResponse,
+    ResponseGetImagePreviewResponse,
+    GlpiUsersInGroupsResponse,
+    UploadTicketDocumentResponse,
 } from '~glpi/dto/post-request-dto';
 import {Response, Express} from "express";
-import {Cache} from 'cache-manager'
-import {CACHE_MANAGER} from '@nestjs/cache-manager'
 
 import {GLPI_DB_CONNECTION} from '~root/src/constants';
-import {GetGlpiUsersInGroupsResponse, GetTestParams} from "~glpi/dto/get-request-dto";
+import {GetImagePreviewParams} from "~glpi/dto/get-request-dto";
 import {FileInterceptor} from "@nestjs/platform-express";
-import {CacheInterceptor, CacheKey, CacheTTL} from "@nestjs/cache-manager";
 
 @ApiTags(GLPI_DB_CONNECTION)
 @Controller("glpi")
@@ -72,7 +70,7 @@ export class GLPI_Controller {
     @Post("/GetUserAccessOnTicket")
     @Header("content-type", "application/json")
     @ApiBody({required: true, type: RequestTicketIdAndUsernameDto})
-    @ApiResponse({type: [RequestUserAccessOnTicket]})
+    @ApiResponse({type: [UserAccessOnTicket]})
     guaot(@Body() dto: RequestTicketIdAndUsernameDto, @Res() res: Response) {
         return this.glpiService.GetUserAccessOnTicket(dto, res);
     }
@@ -81,7 +79,7 @@ export class GLPI_Controller {
     @Post("/GetTicketInfo")
     @Header("content-type", "application/json")
     @ApiBody({required: true, type: RequestTicketIdAndUsernameDto})
-    @ApiResponse({type: [GetTicketInfoResponse]})
+    @ApiResponse({type: [TicketInfoResponse]})
     gtibi(@Body() dto: RequestTicketIdAndUsernameDto, @Res() res: Response) {
         return this.glpiService.GetTicketInfo(dto, res);
     }
@@ -90,7 +88,7 @@ export class GLPI_Controller {
     @Post("/GetTicketMembers")
     @Header("content-type", "application/json")
     @ApiBody({required: true, type: RequestTicketIdDto})
-    @ApiResponse({type: [GetTicketUsersResponse]})
+    @ApiResponse({type: [TicketMembersResponse]})
     gtubti(@Body() dto: RequestTicketIdDto, @Res() res: Response) {
         return this.glpiService.GetTicketMembers(dto, res);
     }
@@ -99,18 +97,18 @@ export class GLPI_Controller {
     @Post("/GetTicketChat")
     @Header("content-type", "application/json")
     @ApiBody({required: true, type: RequestTicketIdAndUsernameDto})
-    @ApiResponse({type: [GetTicketFollowupsResponse]})
+    @ApiResponse({type: [TicketChatResponse]})
     gtfbti(@Body() dto: RequestTicketIdAndUsernameDto, @Res() res: Response) {
         return this.glpiService.GetTicketChat(dto, res);
     }
 
     @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
-    @Post("/SetTicketFollowup")
+    @Post("/OldCreateTicketFollowup")
     @Header("content-type", "application/json")
-    @ApiBody({required: true, type: SetTicketFollowupsDto})
-    @ApiResponse({type: [SetTicketFollowupsResponse]})
-    stf(@Body() dto: SetTicketFollowupsDto, @Res() res: Response) {
-        return this.glpiService.SetTicketFollowup(dto, res);
+    @ApiBody({required: true, type: TicketFollowupDto})
+    @ApiResponse({type: [TicketFollowupsResponse]})
+    stf(@Body() dto: TicketFollowupDto, @Res() res: Response) {
+        return this.glpiService.OldCreateTicketFollowup(dto, res);
     }
 
     // endregion
@@ -119,43 +117,45 @@ export class GLPI_Controller {
     @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
     @Get("/GetGlpiUsersInGroups")
     @Header("content-type", "application/json")
-    @ApiResponse({type: [GetGlpiUsersInGroupsResponse]})
+    @ApiResponse({type: [GlpiUsersInGroupsResponse]})
     gguig(@Res() res: Response) {
         return this.glpiService.GetGlpiUsersInGroups(res);
     }
 
     // endregion
 
-    /**region [Test] */
+    /**region [GLPI API] */
     @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
-    @Get("/CreateTicketFollowup")
+    @Post("/CreateTicketFollowup")
     @Header("content-type", "application/json")
-    @ApiBody({required: true, type: CreateTicketFollowupDto})
-    // @ApiResponse({type: [CreateTicketFollowupDto]})
-    ctf(@Body() dto: CreateTicketFollowupDto, @Res() res: Response) {
+    @ApiBody({required: true, type: TicketFollowupDto})
+    @ApiResponse({type: [CreateTicketFollowupResponse]})
+    ctf(@Body() dto: TicketFollowupDto, @Res() res: Response) {
         return this.glpiService.CreateTicketFollowup(dto, res);
     }
 
     @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
     @Post("/UploadTicketDocument")
+    @ApiBody({required: true, type: RequestTicketIdAndUsernameDto})
+    @ApiResponse({type: [UploadTicketDocumentResponse]})
     @UseInterceptors(FileInterceptor('file'))
-    ud(@UploadedFile() file: Express.Multer.File, @Body() dto: RequestFileUploadDto, @Res() res: Response) {
+    ud(@UploadedFile() file: Express.Multer.File, @Body() dto: RequestTicketIdAndUsernameDto, @Res() res: Response) {
         return this.glpiService.UploadTicketDocument(file, dto, res);
     }
 
     @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
     @Post("/DownloadDocument")
     @Header("content-type", "application/octet-stream")
-    @ApiBody({required: true, type: RequestDownloadDocumentDto})
-    dd(@Body() dto: RequestDownloadDocumentDto, @Res() res: Response) {
+    @ApiBody({required: true, type: RequestTicketIdAndUsernameDto})
+    dd(@Body() dto: RequestTicketIdAndUsernameDto, @Res() res: Response) {
         return this.glpiService.DownloadDocument(dto, res);
     }
 
     @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
     @Get("/GetImagePreview")
     @Header("content-type", "application/json; charset=utf-8")
-    @ApiResponse({type: [ResponseGetImagePreviewDto]})
-    test(@Query() params: GetTestParams, @Res() res: Response) {
+    @ApiResponse({type: [ResponseGetImagePreviewResponse]})
+    test(@Query() params: GetImagePreviewParams, @Res() res: Response) {
         return this.glpiService.GetImagePreview(params, res);
     }
 

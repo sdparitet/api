@@ -3,14 +3,20 @@ import {InjectDataSource} from "@nestjs/typeorm";
 import {GLPI_DB_CONNECTION} from "~root/src/constants";
 import {DataSource} from "typeorm";
 import {IGlpiUserToken} from "~root/src/connectors/glpi/types";
+import {HttpStatus} from "@nestjs/common";
+
+// ToDo почистить, добавить типы
 export class GLPI {
     private session = require('axios')
 
     private readonly _baseUrl = process.env.GLPI_API_URL || 'https://sd.paritet.su/apirest.php/'
-    private readonly _appToken = process.env.GLPI_API_TOKEN || 'Aeyv64RRYChfYpHVTWmf1mrNBRpmkNK8EjrU43rh'
+    private readonly _appToken = process.env.GLPI_API_TOKEN || ''
     private _username: string
     private _userToken: string
+    userId: number
+    userFIO: string
     sessionToken: string
+    authorized: boolean
 
 
     constructor(username: string, @InjectDataSource(GLPI_DB_CONNECTION) private readonly glpi: DataSource) {
@@ -26,9 +32,17 @@ export class GLPI {
 
             this._userToken = await this._get_user_token()
 
-            const data = await this._initSession()
-            this.sessionToken = data.session_token
-            this.session.defaults.headers.common['Session-Token'] = this.sessionToken
+            const res: AxiosResponse = await this._initSession()
+
+            if (res.status === HttpStatus.OK) {
+                this.authorized = true
+                this.userId = res.data.session.glpiID
+                this.userFIO = res.data.session.glpifriendlyname
+                this.sessionToken = res.data.session_token
+                this.session.defaults.headers.common['Session-Token'] = this.sessionToken
+            } else {
+                this.authorized = false
+            }
 
             return this
         })() as unknown as GLPI
@@ -71,8 +85,10 @@ export class GLPI {
         const auth_header = {
             'Authorization': 'user_token ' + this._userToken
         }
-        return this.session.get('initSession', {headers: auth_header})
-            .then((response: AxiosResponse) => response.data)
+        return this.session.get('initSession', {headers: auth_header, params: {get_full_session: true}})
+            .then((response: AxiosResponse) => {
+                return response
+            })
     }
 
     async kill_session() {
@@ -89,49 +105,51 @@ export class GLPI {
             .then((response: AxiosResponse) => response)
     }
 
-    async create_followup() {
-        return this.session.post('followup') //ToDo Доделать
+    async create_followup(ticket_id: number, text: string) {
+        const payload = {
+            input: {
+                itemtype: 'Ticket',
+                items_id: ticket_id,
+                users_id: this.userId,
+                content: text,
+            }
+        }
+        return this.session.post('ITILFollowup', payload)
     }
 
-    async upload_document(file: Express.Multer.File) {
+    async upload_document(file: Express.Multer.File, filename: string) {
         const blob = new Blob([file.buffer], {type: file.mimetype})
         const form = new FormData()
         form.append(
             'uploadManifest',
-            `{"input": {"name": "${file.originalname}", "_filename" : ["${file.originalname}"]}}`)
-        form.append('filename[0]', blob, file.originalname)
+            `{"input": {"name": "${filename}", "_filename" : ["${filename}"]}}`)
+        form.append('filename[0]', blob, filename)
 
-        return this.session.post('Document', form, {headers: {'Content-Type': 'multipart/form-data'}})
+        return await this.session.post('Document', form, {headers: {'Content-Type': 'multipart/form-data'}})
     }
 
-    async upload_ticket_document(file: Express.Multer.File, ticketId: number) {
-        const createdFile = await this.upload_document(file)
+    async upload_ticket_document(file: Express.Multer.File, ticketId: number, filename: string) {
+        const createdFile = await this.upload_document(file, filename)
 
-        await this.glpi.query('' +
-            'insert into glpi_documents_items                                               ' +
-            '(documents_id, items_id, itemtype, date_mod, users_id, date_creation, date)    ' +
-            `values ( ${createdFile.data.id}                                                ` +
-            `       , ${ticketId}                                                           ` +
-            '       , \'Ticket\'                                                            ' +
-            '       , NOW()                                                                 ' +
-            `       , (select id from glpi_users where name = \'${this._username}\')        ` +
-            '       , NOW()                                                                 ' +
-            '       , NOW());                                                               ')
+        await this.glpi.query(`
+            insert into glpi_documents_items
+            (documents_id, items_id, itemtype, date_mod, users_id, date_creation, date)
+            values ( ${createdFile.data.id}
+                   , ${ticketId}
+                   , 'Ticket'
+                   , NOW()
+                   , (select id from glpi_users where name = '${this._username}')
+                   , NOW()
+                   , NOW());`)
 
         return {
-            ...createdFile,
-            data: {
-                ...createdFile.data,
-                ticket_id: ticketId,
-            }
+            status: createdFile.status,
+            ticket_id: ticketId,
+            ...createdFile.data
         }
     }
 
     async download_document(docId: number) {
-
-
-
-
         const headers = {
             'Accept': 'application/octet-stream',
         }

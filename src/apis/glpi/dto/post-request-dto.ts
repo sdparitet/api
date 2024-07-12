@@ -1,12 +1,19 @@
 import {ApiProperty} from '@nestjs/swagger';
 
 /**region [ Global ] */
+export type RequestTypeEnum = 1 | 2  // 1 - инцидент, 2 - запрос
+export type StatusEnum = 1 | 2 | 3 | 4 | 5 | 6  // 1 - новая, 2 - в работе, 3 - запланирована, 4 - в ожидании, 5 - решена, 6 - закрыта
+export type MemberTypeEnum = 1 | 2  // 1 - пользователь, 2 - группа
+export type AccessoryTypeEnum = 1 | 2 | 3  // 1 - инициатор, 2 - исполнитель, 3 - наблюдатель
+export type ChatItemTypeEnum = 'Service' | 'Blank' | 'Message' | 'File' | 'Image' | 'Solution'
+export type sideTypeEnum = 1 | 2  // 0 - право, 1 - лево
+
 /**
  * @param {string} name
  */
 export class RequestUsernameDto {
     @ApiProperty()
-    name: string
+    username: string
 }
 
 /**
@@ -26,49 +33,43 @@ export class RequestTicketIdAndUsernameDto {
     id: number
 
     @ApiProperty()
-    name: string
+    username: string
+
+    @ApiProperty()
+    filename: string
 }
 
 // endregion
 
 /**region [ Ticket list ] */
-/**
- * @param {boolean} access
- */
-export class RequestUserAccessOnTicket {
-    @ApiProperty()
-    access: boolean
+/**region [ Requests ] */
+// endregion
 
-    @ApiProperty()
-    found: boolean
-}
-
+/**region [ Response ] */
 /**
  * @param {number} id
- * @param {number} type
+ * @param {RequestTypeEnum} type
  * @param {string} name
+ * @param {StatusEnum} status
  * @param {string} category
  * @param {string} date_creation
- * @param {string} time_to_solve
+ * @param {string} time_to_resolve
  */
 export class UserTicketsResponse {
     @ApiProperty()
     id: number
 
-    @ApiProperty()
-    type: number
+    @ApiProperty({description: '1 - инцидент, 2 - запрос', enum: [1,2]})
+    type: RequestTypeEnum
 
     @ApiProperty()
     name: string
 
+    @ApiProperty({description: '1 - новая, 2 - в работе, 3 - запланирована, 4 - в ожидании, 5 - решена, 6 - закрыта', enum: [1,2,3,4,5,6]})
+    status: StatusEnum
+
     @ApiProperty()
     category: string
-
-    @ApiProperty()
-    specialists: string
-
-    @ApiProperty()
-    specialistsGroups: string
 
     @ApiProperty({example: '2024-01-01T00:00:00.000Z'})
     date_creation: string
@@ -76,7 +77,6 @@ export class UserTicketsResponse {
     @ApiProperty({example: '2024-01-01T00:00:00.000Z'})
     time_to_resolve: string
 }
-
 
 /**
  * @param {number} ticket_id
@@ -93,43 +93,77 @@ export class TicketsMembersResponse {
     @ApiProperty()
     name: string
 
+    @ApiProperty({description: '1 - пользователь, 2 - группа', enum: [1, 2]})
+    memberType: MemberTypeEnum
+
+    @ApiProperty({description: '1 - инициатор, 2 - исполнитель, 3 - наблюдатель', enum: [1, 2, 3]})
+    accessoryType: AccessoryTypeEnum
+}
+
+// endregion
+// endregion
+
+/**region [ Ticket info ] */
+
+/**region [ Requests ] */
+/**
+ * @param {number} ticket_id
+ * @param {string} username
+ * @param {string} text
+ */
+export class TicketFollowupDto {
     @ApiProperty()
-    memberType: 1 | 2         // 1 - user, 2 - group
+    ticket_id: number
 
     @ApiProperty()
-    accessoryType: 1 | 2 | 3  // 1 - applicants, 2 - specialists, 3 - watchers
+    username: string
+
+    @ApiProperty()
+    text: string
 }
 
 // endregion
 
-/**region [ Ticket info ] */
+/**region [ Response ] */
+/**
+ * @param {boolean} access
+ * @param {boolean} found
+ */
+export class UserAccessOnTicket {
+    @ApiProperty()
+    access: boolean
+
+    @ApiProperty()
+    found: boolean
+}
+
 /**
  * @param {number} id
  * @param {string} name
- * @param {number} status
- * @param {number} type
- * @param {string} completename
+ * @param {StatusEnum} status
+ * @param {RequestTypeEnum} type
+ * @param {string} category
  * @param {string} date_creation
  * @param {string} time_to_resolve
  * @param {string} solvedate
  * @param {string} closedate
  * @param {string} content
  */
-export class GetTicketInfoResponse {
+export class TicketInfoResponse {
     @ApiProperty()
     id: number
 
     @ApiProperty()
     name: string
 
-    @ApiProperty()
-    status: number
+    @ApiProperty({description: '1 - новая, 2 - в работе, 3 - запланирована, 4 - в ожидании, 5 - решена, 6 - закрыта', enum: [1,2,3,4,5,6]})
+    status: StatusEnum
+
+    @ApiProperty({description: '1 - инцидент, 2 - запрос', enum: [1,2]})
+    type: RequestTypeEnum
 
     @ApiProperty()
-    type: number
-
-    @ApiProperty()
-    completename: string
+    category: string
 
     @ApiProperty()
     date_creation: string
@@ -147,123 +181,227 @@ export class GetTicketInfoResponse {
 /**
  * @param {number} id
  * @param {string} name
- * @param {number} type
- * @param {number} itemType
+ * @param {MemberTypeEnum} memberType
+ * @param {AccessoryTypeEnum} accessoryType
+ * @param {string | null} phone
  */
-export class GetTicketUsersResponse {
+export class TicketMembersResponse {
     @ApiProperty()
     id: number
 
     @ApiProperty()
     name: string
 
-    @ApiProperty()
-    accessoryType: number
+    @ApiProperty({description: '1 - пользователь, 2 - группа', enum: [1, 2]})
+    memberType: MemberTypeEnum
+
+    @ApiProperty({description: '1 - инициатор, 2 - исполнитель, 3 - наблюдатель', enum: [1, 2, 3]})
+    accessoryType: AccessoryTypeEnum
 
     @ApiProperty()
-    memberType: number
+    phone: string | null
 }
 
 /**
- * @param {string} type
- * @param {number} id
- * @param {number} item_id
+ * @param {number} userId
  * @param {string} name
- * @param {string} content
- * @param {string} data
- * @param {string} date
+ * @param {boolean} sideLeft
+ * @param {number} id
+ * @param {ChatItemTypeEnum} type
+ * @param {string} text
+ * @param {string} time
  */
-export class GetTicketFollowupsResponse {
+export class TicketChatResponse {
     @ApiProperty()
-    type: string
-
-    @ApiProperty()
-    id: number
-
-    @ApiProperty()
-    ticket_id: number
-
-    @ApiProperty()
-    author_type: number
+    userId: number
 
     @ApiProperty()
     name: string
 
-    @ApiProperty()
-    content: string
+    @ApiProperty({description: '0 - право, 1 - лево', enum: [0, 1]})
+    sideLeft: sideTypeEnum
 
     @ApiProperty()
-    data: string
+    id: number
+
+    @ApiProperty({description: 'Ticket description = Message', enum: ['Service', 'Blank', 'Message', 'File', 'Image', 'Solution']})
+    type: ChatItemTypeEnum
+
+    @ApiProperty()
+    text: string
 
     @ApiProperty()
     time: string
 }
 
 /**
- * @param {number} ticket_id
- * @param {string} username
- * @param {string} content
+ * @param {number} fieldCount
+ * @param {number} affectedRows
+ * @param {number} insertId
+ * @param {number} serverStatus
+ * @param {number} warningCount
+ * @param {string} message
+ * @param {boolean} protocol41
+ * @param {number} changedRows
  */
-export class SetTicketFollowupsDto {
+export class TicketFollowupsResponse {
     @ApiProperty()
-    ticket_id: number
+    fieldCount: number
 
     @ApiProperty()
-    username: string
+    affectedRows: number
 
     @ApiProperty()
-    content: string
-}
+    insertId: number
 
-/**
- * @param {boolean} success
- */
-export class SetTicketFollowupsResponse {
     @ApiProperty()
-    access: boolean
+    serverStatus: number
+
+    @ApiProperty()
+    warningCount: number
+
+    @ApiProperty()
+    message: string
+
+    @ApiProperty()
+    protocol41: boolean
+
+    @ApiProperty()
+    changedRows: number
 }
 
 // endregion
+// endregion
 
-/**region [ Test ] */
-export class RequestBaseDto {
-    @ApiProperty()
-    username: string
-}
+/**region [ Phonebook ] */
+/**region [ Requests ] */
+// endregion
 
-export class CreateTicketFollowupDto {
-    @ApiProperty()
-    ticket_id: number
-
-    @ApiProperty()
-    username: string
-
-    @ApiProperty()
-    content: string
-}
-
+/**region [ Response ] */
 /**
- * @param {string} username
- * @param {number} ticket_id
- */
-export class RequestFileUploadDto {
-    @ApiProperty()
-    username: string
-
-    @ApiProperty()
-    ticket_id: number
-}
-
-/**
- * @param {string} username
+ * @param {number} group_id
+ * @param {string} group_name
  * @param {number} id
+ * @param {string} name
+ * @param {string} email
+ * @param {string} phone
  */
-export class RequestDownloadDocumentDto {
+export class GlpiUsersInGroupsResponse {
+    @ApiProperty()
+    group_id: number
+
+    @ApiProperty()
+    group_name: string
+
+    @ApiProperty()
+    id: number
+
     @ApiProperty()
     name: string
 
     @ApiProperty()
+    email: string
+
+    @ApiProperty()
+    phone: string
+}
+
+// endregion
+// endregion
+
+/**region [ GLPI API ] */
+
+/**region [ Requests ] */
+// endregion
+
+/**region [ Response ] */
+/**
+ * @param {number} id
+ * @param {string} message
+ * @param {number} userId
+ * @param {string} userFio
+ */
+export class CreateTicketFollowupResponse {
+    @ApiProperty()
     id: number
+
+    @ApiProperty()
+    message: string
+
+    @ApiProperty()
+    userId: number
+
+    @ApiProperty()
+    userFio: string
+}
+
+/**
+ * @param {string} name
+ * @param {number} size
+ * @param {string} type
+ * @param {string} url
+ * @param {string} deleteUrl
+ * @param {string} deleteType
+ * @param {string} prefix
+ * @param {string} display
+ * @param {string} filesize
+ * @param {string} id
+ */
+class UploadTicketDocumentUploadResult {
+    @ApiProperty()
+    name: string
+
+    @ApiProperty()
+    size: number
+
+    @ApiProperty()
+    type: string
+
+    @ApiProperty()
+    url: string
+
+    @ApiProperty()
+    deleteUrl: string
+
+    @ApiProperty()
+    deleteType: string
+
+    @ApiProperty()
+    prefix: string
+
+    @ApiProperty()
+    display: string
+
+    @ApiProperty()
+    filesize: string
+
+    @ApiProperty()
+    id: string
+}
+
+/**
+ * @param {number} status
+ * @param {number} ticket_id
+ * @param {number} id
+ * @param {string} message
+ * @param {{ string: UploadTicketDocumentUploadResult[] }} upload_result
+ */
+export class UploadTicketDocumentResponse {
+    @ApiProperty()
+    status: number
+
+    @ApiProperty()
+    ticket_id: number
+
+    @ApiProperty()
+    id: number
+
+    @ApiProperty()
+    message: string
+
+    @ApiProperty()
+    upload_result: { string: UploadTicketDocumentUploadResult[] }
+
 }
 
 /**
@@ -276,7 +414,7 @@ export class RequestDownloadDocumentDto {
  * @param {string} mime
  * @param {string} base64
  */
-export class ResponseGetImagePreviewDto {
+export class ResponseGetImagePreviewResponse {
 
     @ApiProperty()
     id: number
@@ -297,10 +435,8 @@ export class ResponseGetImagePreviewDto {
     fileHeight: number
 
     @ApiProperty()
-    mime: string
-
-    @ApiProperty()
     base64: string
 }
 
+// endregion
 // endregion
