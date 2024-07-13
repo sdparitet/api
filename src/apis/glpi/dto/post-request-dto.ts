@@ -26,7 +26,7 @@ export class RequestTicketIdDto {
 
 /**
  * @param {number} id
- * @param {string} name
+ * @param {string} username
  */
 export class RequestTicketIdAndUsernameDto {
     @ApiProperty()
@@ -34,9 +34,6 @@ export class RequestTicketIdAndUsernameDto {
 
     @ApiProperty()
     username: string
-
-    @ApiProperty()
-    filename: string
 }
 
 // endregion
@@ -312,6 +309,16 @@ export class GlpiUsersInGroupsResponse {
 /**region [ GLPI API ] */
 
 /**region [ Requests ] */
+export class RequestTicketIdAndUsernameAndFileNameDto {
+    @ApiProperty()
+    id: number
+
+    @ApiProperty()
+    username: string
+
+    @ApiProperty()
+    filename: string
+}
 // endregion
 
 /**region [ Response ] */

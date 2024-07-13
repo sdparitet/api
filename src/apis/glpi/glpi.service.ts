@@ -16,19 +16,19 @@ import {
     TicketFollowupsResponse,
     TicketsMembersResponse,
     UserTicketsResponse,
-    GlpiUsersInGroupsResponse, UploadTicketDocumentResponse,
+    GlpiUsersInGroupsResponse, UploadTicketDocumentResponse, RequestTicketIdAndUsernameAndFileNameDto,
 } from '~glpi/dto/post-request-dto';
 import {GetImagePreviewParams} from "~glpi/dto/get-request-dto";
 import {GLPI} from "~root/src/connectors/glpi/glpi-api.connector";
-// import {CACHE_MANAGER} from "@nestjs/cache-manager";
-// import {Cache} from "cache-manager";
+import {CACHE_MANAGER} from "@nestjs/cache-manager";
+import {Cache} from "cache-manager";
 import sharp, {Sharp} from "sharp";
 
 @Injectable()
 export class GLPI_Service {
     constructor(
         @InjectDataSource(GLPI_DB_CONNECTION) private readonly glpi: DataSource,
-        // @Inject(CACHE_MANAGER) private cacheService: Cache,
+        @Inject(CACHE_MANAGER) private cacheService: Cache,
     ) {
     }
 
@@ -310,7 +310,7 @@ export class GLPI_Service {
         })
     }
 
-    async UploadTicketDocument(file: Express.Multer.File, dto: RequestTicketIdAndUsernameDto, res: Response) {
+    async UploadTicketDocument(file: Express.Multer.File, dto: RequestTicketIdAndUsernameAndFileNameDto, res: Response) {
         if (file) {
             await this.GlpiApiWrapper(dto.username, this.glpi, res, async (glpi) => {
                 const ret: UploadTicketDocumentResponse = await glpi.upload_ticket_document(file, dto.id, dto.filename)
@@ -350,18 +350,19 @@ export class GLPI_Service {
 
         const meta = await image.metadata()
         const isHorizontal = meta.width > meta.height
-
         if ((Math.max(meta.width, meta.height) / Math.min(meta.width, meta.height)) > maxRelation) {
             return null
         } else {
             if (isHorizontal) {
                 if (meta.width > maxWidth) {
+                    console.log('T S', maxHeight, Math.round(meta.height * maxWidth / meta.width))
                     return image.resize(maxWidth, Math.round(meta.height * maxWidth / meta.width)).toBuffer()
                 } else {
                     return image.toBuffer()
                 }
             } else {
                 if (meta.height > maxHeight) {
+                    console.log('T S', Math.round(meta.width * maxHeight / meta.height), maxHeight)
                     return image.resize(Math.round(meta.width * maxHeight / meta.height), maxHeight).toBuffer()
                 } else {
                     return image.toBuffer()
@@ -371,10 +372,10 @@ export class GLPI_Service {
     }
 
     async GetImagePreview(params: GetImagePreviewParams, res: Response) {
-        // const cachedData: string = await this.cacheService.get(params.id.toString())
-        // const ttl = 60 * 60 * 24 * 14
+        const cachedData: string = await this.cacheService.get(params.id.toString())
+        const ttl = 60 * 60 * 24 * 14
 
-        // if (!cachedData) {
+        if (!cachedData) {
             let filename = 'unknown.file'
 
             const _ret = await this.glpi.query(`select filename
@@ -405,15 +406,15 @@ export class GLPI_Service {
                                 base64: bufferData.toString('base64'),
                             })
 
-                            // await this.cacheService.set(params.id.toString(), JSON.stringify({
-                            //     id: params.id,
-                            //     asFile: false,
-                            //     fileName: filename,
-                            //     fileSize: compressedMeta.size,
-                            //     fileWidth: compressedMeta.width,
-                            //     fileHeight: compressedMeta.height,
-                            //     base64: bufferData.toString('base64'),
-                            // }), ttl)
+                            await this.cacheService.set(params.id.toString(), JSON.stringify({
+                                id: params.id,
+                                asFile: false,
+                                fileName: filename,
+                                fileSize: compressedMeta.size,
+                                fileWidth: compressedMeta.width,
+                                fileHeight: compressedMeta.height,
+                                base64: bufferData.toString('base64'),
+                            }), ttl)
                         } else {
                             res.status(ret.status).json({
                                 id: params.id,
@@ -422,17 +423,17 @@ export class GLPI_Service {
                                 fileSize: ret.data.length,
                                 fileWidth: 0,
                                 fileHeight: 0,
-                                base64: ret.data.toString('base64'),
+                                base64: '',
                             })
-                            // await this.cacheService.set(params.id.toString(), JSON.stringify({
-                            //     id: params.id,
-                            //     asFile: true,
-                            //     fileName: filename,
-                            //     fileSize: ret.data.length,
-                            //     fileWidth: 0,
-                            //     fileHeight: 0,
-                            //     base64: ret.data.toString('base64'),
-                            // }), ttl)
+                            await this.cacheService.set(params.id.toString(), JSON.stringify({
+                                id: params.id,
+                                asFile: true,
+                                fileName: filename,
+                                fileSize: ret.data.length,
+                                fileWidth: 0,
+                                fileHeight: 0,
+                                base64: '',
+                            }), ttl)
                         }
                     } else {
                         res.status(ret.status).json({
@@ -442,25 +443,25 @@ export class GLPI_Service {
                             fileSize: ret.data.length,
                             fileWidth: 0,
                             fileHeight: 0,
-                            base64: ret.data.toString('base64'),
+                            base64: '',
                         })
-                        // await this.cacheService.set(params.id.toString(), JSON.stringify({
-                        //     id: params.id,
-                        //     asFile: true,
-                        //     fileName: filename,
-                        //     fileSize: ret.data.length,
-                        //     fileWidth: 0,
-                        //     fileHeight: 0,
-                        //     base64: ret.data.toString('base64'),
-                        // }), ttl)
+                        await this.cacheService.set(params.id.toString(), JSON.stringify({
+                            id: params.id,
+                            asFile: true,
+                            fileName: filename,
+                            fileSize: ret.data.length,
+                            fileWidth: 0,
+                            fileHeight: 0,
+                            base64: '',
+                        }), ttl)
                     }
                 } else {
                     res.status(ret.status === HttpStatus.UNAUTHORIZED ? HttpStatus.BAD_REQUEST : ret.status ).json([])
                 }
             })
-        // } else {
-        //     res.status(HttpStatus.OK).json(JSON.parse(cachedData))
-        // }
+        } else {
+            res.status(HttpStatus.OK).json(JSON.parse(cachedData))
+        }
     }
 
     //endregion

@@ -28,7 +28,7 @@ import {
     CreateTicketFollowupResponse,
     ResponseGetImagePreviewResponse,
     GlpiUsersInGroupsResponse,
-    UploadTicketDocumentResponse,
+    UploadTicketDocumentResponse, RequestTicketIdAndUsernameAndFileNameDto,
 } from '~glpi/dto/post-request-dto';
 import {Response, Express} from "express";
 
@@ -136,10 +136,10 @@ export class GLPI_Controller {
 
     @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
     @Post("/UploadTicketDocument")
-    @ApiBody({required: true, type: RequestTicketIdAndUsernameDto})
+    @ApiBody({required: true, type: RequestTicketIdAndUsernameAndFileNameDto})
     @ApiResponse({type: [UploadTicketDocumentResponse]})
     @UseInterceptors(FileInterceptor('file'))
-    ud(@UploadedFile() file: Express.Multer.File, @Body() dto: RequestTicketIdAndUsernameDto, @Res() res: Response) {
+    ud(@UploadedFile() file: Express.Multer.File, @Body() dto: RequestTicketIdAndUsernameAndFileNameDto, @Res() res: Response) {
         return this.glpiService.UploadTicketDocument(file, dto, res);
     }
 

@@ -10,8 +10,6 @@ import {LoggerMiddleware} from '~utils/loggerMiddleware';
 import {Stat_Module} from '~stat/stat.module';
 import {Staff_Module} from '~staff/staff.module';
 import {GLPI_Module} from '~glpi/glpi.module';
-import {CacheModule} from "@nestjs/cache-manager";
-import * as redisStore from 'cache-manager-redis-store';
 
 @Module({
     controllers: [],
@@ -20,13 +18,6 @@ import * as redisStore from 'cache-manager-redis-store';
         ConfigModule.forRoot({
             envFilePath: `.env.${process.env.NODE_ENV}`,
         }),
-
-        // CacheModule.register({
-        //     isGlobal: true,
-        //     store: redisStore,
-        //     host: process.env.REDIS_HOST,
-        //     port: process.env.REDIS_PORT,
-        // }),
 
         TypeOrmModule.forRoot({
             name: KPI_DB_CONNECTION,
@@ -44,6 +35,7 @@ import * as redisStore from 'cache-manager-redis-store';
             logging: process.env.NODE_ENV === 'development' ? "all" : ["error"],
             synchronize: process.env.NODE_ENV === 'development',
         }),
+
         TypeOrmModule.forRoot({
             name: STAT_DB_CONNECTION,
             type: 'mariadb',
@@ -59,6 +51,7 @@ import * as redisStore from 'cache-manager-redis-store';
             logging: process.env.NODE_ENV === 'development' ? "all" : ["error"],
             synchronize: process.env.NODE_ENV === 'development',
         }),
+
         TypeOrmModule.forRoot({
             name: GLPI_DB_CONNECTION,
             type: 'mariadb',
