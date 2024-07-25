@@ -6,7 +6,7 @@
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "allowSyntheticDefaultImports": true,
-    "target": "ES2017",
+    "target": "ES2018",
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",
@@ -29,6 +29,7 @@
       "~staff/*"    : ["src/apis/staff/*"],
       "~stat/*"     : ["src/apis/stat/*"],
       "~glpi/*"     : ["src/apis/glpi/*"],
+      "~form/*"     : ["src/apis/form/*"],
     }
 
   }

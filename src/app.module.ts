@@ -3,13 +3,14 @@ import {JwtService} from '@nestjs/jwt';
 import {ConfigModule} from '@nestjs/config';
 import {TypeOrmModule} from '@nestjs/typeorm';
 
-import {GLPI_DB_CONNECTION, KPI_DB_CONNECTION, STAT_DB_CONNECTION} from '~root/src/constants';
+import {GLPI_DB_CONNECTION, FORMS_DB_CONNECTION, KPI_DB_CONNECTION, STAT_DB_CONNECTION} from '~root/src/constants';
 
 import {Kpi_Module} from '~kpi/kpi.module';
 import {LoggerMiddleware} from '~utils/loggerMiddleware';
 import {Stat_Module} from '~stat/stat.module';
 import {Staff_Module} from '~staff/staff.module';
 import {GLPI_Module} from '~glpi/glpi.module';
+import {Form_Module} from "~root/src/apis/form/form.module";
 
 @Module({
     controllers: [],
@@ -17,6 +18,22 @@ import {GLPI_Module} from '~glpi/glpi.module';
     imports: [
         ConfigModule.forRoot({
             envFilePath: `.env.${process.env.NODE_ENV}`,
+        }),
+
+        TypeOrmModule.forRoot({
+            name: FORMS_DB_CONNECTION,
+            type: 'postgres',
+            host: process.env.FORMS_HOST,
+            port: Number(process.env.FORMS_PORT),
+            username: process.env.FORMS_USER,
+            password: process.env.FORMS_PASSWORD,
+            database: process.env.FORMS_DB,
+            entities: [
+                __dirname + '/apis/form/entity/*.entity.{js,ts}',
+            ],
+            autoLoadEntities: true,
+            logging: process.env.NODE_ENV === 'development' ? "all" : ["error"],
+            synchronize: process.env.NODE_ENV === 'development',
         }),
 
         TypeOrmModule.forRoot({
@@ -70,6 +87,7 @@ import {GLPI_Module} from '~glpi/glpi.module';
         Staff_Module,
         Stat_Module,
         GLPI_Module,
+        Form_Module,
     ],
 })
 export class AppModule implements NestModule {

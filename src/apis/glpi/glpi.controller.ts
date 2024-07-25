@@ -3,9 +3,10 @@ import {
     Controller,
     Get,
     Header,
-    Post, Query,
+    Post,
+    Query,
     Res,
-    UploadedFile,
+    UploadedFiles,
     UseInterceptors
 } from "@nestjs/common";
 import {ApiTags, ApiBody, ApiResponse} from '@nestjs/swagger';
@@ -30,11 +31,11 @@ import {
     GlpiUsersInGroupsResponse,
     UploadTicketDocumentResponse, RequestTicketIdAndUsernameAndFileNameDto,
 } from '~glpi/dto/post-request-dto';
-import {Response, Express} from "express";
+import {Response} from "express";
 
 import {GLPI_DB_CONNECTION} from '~root/src/constants';
 import {GetImagePreviewParams} from "~glpi/dto/get-request-dto";
-import {FileInterceptor} from "@nestjs/platform-express";
+import {FilesInterceptor} from "@nestjs/platform-express";
 
 @ApiTags(GLPI_DB_CONNECTION)
 @Controller("glpi")
@@ -138,9 +139,9 @@ export class GLPI_Controller {
     @Post("/UploadTicketDocument")
     @ApiBody({required: true, type: RequestTicketIdAndUsernameAndFileNameDto})
     @ApiResponse({type: [UploadTicketDocumentResponse]})
-    @UseInterceptors(FileInterceptor('file'))
-    ud(@UploadedFile() file: Express.Multer.File, @Body() dto: RequestTicketIdAndUsernameAndFileNameDto, @Res() res: Response) {
-        return this.glpiService.UploadTicketDocument(file, dto, res);
+    @UseInterceptors(FilesInterceptor('files', 100,{limits: {fileSize: 1024 * 1024 * 80}}))
+    ud(@UploadedFiles() files: Express.Multer.File[], @Body() dto: RequestTicketIdAndUsernameAndFileNameDto, @Res() res: Response) {
+        return this.glpiService.UploadTicketDocument(files, dto, res);
     }
 
     @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
@@ -155,8 +156,15 @@ export class GLPI_Controller {
     @Get("/GetImagePreview")
     @Header("content-type", "application/json; charset=utf-8")
     @ApiResponse({type: [ResponseGetImagePreviewResponse]})
-    test(@Query() params: GetImagePreviewParams, @Res() res: Response) {
+    gip(@Query() params: GetImagePreviewParams, @Res() res: Response) {
         return this.glpiService.GetImagePreview(params, res);
+    }
+
+    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
+    @Get("/test")
+    @Header("content-type", "application/json; charset=utf-8")
+    test(@Res() res: Response) {
+        return this.glpiService.Test(res);
     }
 
     // endregion

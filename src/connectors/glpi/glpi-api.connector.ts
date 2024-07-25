@@ -4,6 +4,7 @@ import {GLPI_DB_CONNECTION} from "~root/src/constants";
 import {DataSource} from "typeorm";
 import {IGlpiUserToken} from "~root/src/connectors/glpi/types";
 import {HttpStatus} from "@nestjs/common";
+import {PayloadType} from "~form/types";
 
 // ToDo почистить, добавить типы
 export class GLPI {
@@ -17,7 +18,6 @@ export class GLPI {
     userFIO: string
     sessionToken: string
     authorized: boolean
-
 
     constructor(username: string, @InjectDataSource(GLPI_DB_CONNECTION) private readonly glpi: DataSource) {
         return (async (): Promise<GLPI> => {
@@ -96,13 +96,20 @@ export class GLPI {
     }
 
     async get_item(itemType: string, itemId: number) {
-        return this.session.get(`${itemType}/${itemId}`)
-            .then((response: AxiosResponse) => response)
+        const {status, data} = await this.session.get(`${itemType}/${itemId}`)
+        return {status, data}
     }
 
     async get_all_items(itemType: string) {
-        return this.session.get(itemType)
-            .then((response: AxiosResponse) => response)
+        const {status, data} = await this.session.get(itemType)
+        return {status, data}
+    }
+
+    async add_items(itemType: string, payload: PayloadType[]) {
+        const _payload = {
+            input: payload
+        }
+        return this.session.post(itemType, _payload)
     }
 
     async create_followup(ticket_id: number, text: string) {
@@ -117,35 +124,55 @@ export class GLPI {
         return this.session.post('ITILFollowup', payload)
     }
 
-    async upload_document(file: Express.Multer.File, filename: string) {
-        const blob = new Blob([file.buffer], {type: file.mimetype})
+    async upload_document(files: Express.Multer.File[]) {
+        const FormData = require('form-data')
         const form = new FormData()
-        form.append(
-            'uploadManifest',
-            `{"input": {"name": "${filename}", "_filename" : ["${filename}"]}}`)
-        form.append('filename[0]', blob, filename)
 
-        return await this.session.post('Document', form, {headers: {'Content-Type': 'multipart/form-data'}})
+        form.append('uploadManifest', JSON.stringify({
+            input: files.map(file => {
+                return {
+                    name: decodeURIComponent(file.originalname),
+                    _filename: [decodeURIComponent(file.originalname)]
+                }
+            })
+        }))
+
+        files.forEach((file, index) => {
+            form.append(decodeURIComponent(file.originalname), file.buffer, decodeURIComponent(file.originalname))
+        })
+
+        return await this.session.post('Document', form, {
+            headers: {
+                'Content-Type': 'multipart/form-data',
+                ...form.getHeaders()
+            }
+        })
     }
 
-    async upload_ticket_document(file: Express.Multer.File, ticketId: number, filename: string) {
-        const createdFile = await this.upload_document(file, filename)
+    async upload_ticket_document(files: Express.Multer.File[], ticketId: number) {
+        const createdFiles = await this.upload_document(files)
+
+        console.log(``)
 
         await this.glpi.query(`
             insert into glpi_documents_items
             (documents_id, items_id, itemtype, date_mod, users_id, date_creation, date)
-            values ( ${createdFile.data.id}
-                   , ${ticketId}
-                   , 'Ticket'
-                   , NOW()
-                   , (select id from glpi_users where name = '${this._username}')
-                   , NOW()
-                   , NOW());`)
+            values ${createdFiles.data.map((file, index) => {
+            return `(
+                    ${file.id},
+                    ${ticketId},
+                    'Ticket',
+                    NOW(),
+                    (select id from glpi_users where name = '${this._username}'),
+                    NOW(),
+                    NOW()
+                )` + (index + 1 < createdFiles.data.length ? '' : ';')
+        })}`)
 
         return {
-            status: createdFile.status,
+            status: createdFiles.status,
             ticket_id: ticketId,
-            ...createdFile.data
+            data: createdFiles.data
         }
     }
 

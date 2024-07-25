@@ -315,9 +315,6 @@ export class RequestTicketIdAndUsernameAndFileNameDto {
 
     @ApiProperty()
     username: string
-
-    @ApiProperty()
-    filename: string
 }
 // endregion
 
@@ -387,11 +384,25 @@ class UploadTicketDocumentUploadResult {
 }
 
 /**
- * @param {number} status
- * @param {number} ticket_id
  * @param {number} id
  * @param {string} message
  * @param {{ string: UploadTicketDocumentUploadResult[] }} upload_result
+ */
+export class UploadTicketDocumentInternalResponse {
+    @ApiProperty()
+    id: number
+
+    @ApiProperty()
+    message: string
+
+    @ApiProperty()
+    upload_result: { string: UploadTicketDocumentUploadResult[] }
+}
+
+/**
+ * @param {number} status
+ * @param {number} ticket_id
+ * @param {UploadTicketDocumentInternalResponse[]} data
  */
 export class UploadTicketDocumentResponse {
     @ApiProperty()
@@ -401,15 +412,11 @@ export class UploadTicketDocumentResponse {
     ticket_id: number
 
     @ApiProperty()
-    id: number
-
-    @ApiProperty()
-    message: string
-
-    @ApiProperty()
-    upload_result: { string: UploadTicketDocumentUploadResult[] }
+    data: UploadTicketDocumentInternalResponse[]
 
 }
+
+
 
 /**
  * @param {number} id

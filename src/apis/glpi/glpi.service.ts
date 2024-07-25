@@ -22,7 +22,7 @@ import {GetImagePreviewParams} from "~glpi/dto/get-request-dto";
 import {GLPI} from "~root/src/connectors/glpi/glpi-api.connector";
 import {CACHE_MANAGER} from "@nestjs/cache-manager";
 import {Cache} from "cache-manager";
-import sharp, {Sharp} from "sharp";
+import {Sharp} from "sharp";
 
 @Injectable()
 export class GLPI_Service {
@@ -145,6 +145,8 @@ export class GLPI_Service {
                 from glpi_tickets t
                          left join glpi_itilcategories c on t.itilcategories_id = c.id
                 where t.id = ${dto.id};`)
+
+            console.log(ret)
             if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret[0])
             else res.status(HttpStatus.BAD_REQUEST).json([]);
         })
@@ -310,11 +312,13 @@ export class GLPI_Service {
         })
     }
 
-    async UploadTicketDocument(file: Express.Multer.File, dto: RequestTicketIdAndUsernameAndFileNameDto, res: Response) {
-        if (file) {
+    async UploadTicketDocument(files: Express.Multer.File[], dto: RequestTicketIdAndUsernameAndFileNameDto, res: Response) {
+        if (files) {
+            files.forEach(file =>{
+                console.log(decodeURIComponent(file.originalname))
+            })
             await this.GlpiApiWrapper(dto.username, this.glpi, res, async (glpi) => {
-                const ret: UploadTicketDocumentResponse = await glpi.upload_ticket_document(file, dto.id, dto.filename)
-
+                const ret: UploadTicketDocumentResponse = await glpi.upload_ticket_document(files, dto.id)
                 res.status(ret.status).json(ret)
             })
         } else {
@@ -464,5 +468,11 @@ export class GLPI_Service {
         }
     }
 
+    async Test(res: Response) {
+        await this.GlpiApiWrapper('Welz', this.glpi, res, async (glpi) => {
+            const ret = await glpi.get_item('Location', 37)
+            res.status(ret.status).json(ret)
+        })
+    }
     //endregion
 }
