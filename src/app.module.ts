@@ -21,22 +21,6 @@ import {Form_Module} from "~root/src/apis/form/form.module";
         }),
 
         TypeOrmModule.forRoot({
-            name: FORMS_DB_CONNECTION,
-            type: 'postgres',
-            host: process.env.FORMS_HOST,
-            port: Number(process.env.FORMS_PORT),
-            username: process.env.FORMS_USER,
-            password: process.env.FORMS_PASSWORD,
-            database: process.env.FORMS_DB,
-            entities: [
-                __dirname + '/apis/form/entity/*.entity.{js,ts}',
-            ],
-            autoLoadEntities: true,
-            logging: process.env.NODE_ENV === 'development' ? "all" : ["error"],
-            synchronize: process.env.NODE_ENV === 'development',
-        }),
-
-        TypeOrmModule.forRoot({
             name: KPI_DB_CONNECTION,
             type: 'postgres',
             host: process.env.POSTGRES_HOST,
@@ -79,6 +63,22 @@ import {Form_Module} from "~root/src/apis/form/form.module";
             database: process.env.GLPI_DB,
             entities: [],
             autoLoadEntities: false,
+            logging: process.env.NODE_ENV === 'development' ? "all" : ["error"],
+            synchronize: process.env.NODE_ENV === 'development',
+        }),
+
+        TypeOrmModule.forRoot({
+            name: FORMS_DB_CONNECTION,
+            type: 'postgres',
+            host: process.env.FORMS_HOST,
+            port: Number(process.env.FORMS_PORT),
+            username: process.env.FORMS_USER,
+            password: process.env.FORMS_PASSWORD,
+            database: process.env.FORMS_DB,
+            entities: [
+                __dirname + '/apis/form/entity/*.entity.{js,ts}',
+            ],
+            autoLoadEntities: true,
             logging: process.env.NODE_ENV === 'development' ? "all" : ["error"],
             synchronize: process.env.NODE_ENV === 'development',
         }),

@@ -23,6 +23,7 @@ import {TemplateCondition} from "~form/entity/template.conditions.entity";
             store: redisStore,
             host: process.env.REDIS_HOST,
             port: process.env.REDIS_PORT,
+            db: 1,
         }),
     ],
     exports: [Form_Service],

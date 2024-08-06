@@ -4,27 +4,13 @@ import {
     PrimaryGeneratedColumn,
     ManyToOne,
     Unique,
-    OneToMany, BeforeInsert,
+    OneToMany,
 } from 'typeorm';
 import {FORMS_DB_CONNECTION} from '~root/src/constants';
 import {Form} from "~form/entity/form.entity";
 import {Field} from "~form/entity/field.entity";
 import {Condition} from "~form/entity/condition.entity";
 
-/**
- * @param {number} id
- * @param {string} title
- * @param {number} order
- * @param {Form} form
- * @param {Field[]} fields
- */
-export interface IBlock_Dto {
-    id: number
-    title: string
-    order: number
-    form: Form
-    fields: Field[]
-}
 
 @Entity({database: FORMS_DB_CONNECTION})
 @Unique('order_form_pk', ['order', 'form'])

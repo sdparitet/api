@@ -3,18 +3,6 @@ import {FORMS_DB_CONNECTION} from '~root/src/constants';
 import {Block} from "~form/entity/block.entity";
 import {Condition} from "~form/entity/condition.entity";
 
-/**
- * @param {number} id
- * @param {string} title
- * @param {Block} block
- * @param {FieldType} type
- */
-export interface IField_Dto {
-    id: number
-    title: string
-    block: Block
-    type: FieldType
-}
 
 export enum FieldType {
     text = 'text',
@@ -56,7 +44,7 @@ export class Field {
     default_value: string
 
     @Column({type: 'jsonb', nullable: true})
-    values: { [key: string]: string | number }[]
+    values: { [key: string]: any }[]
 
     @Column({type: 'integer'})
     order: number

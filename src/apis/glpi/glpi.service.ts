@@ -13,10 +13,10 @@ import {
     UserAccessOnTicket,
     RequestUsernameDto,
     TicketFollowupDto,
-    TicketFollowupsResponse,
     TicketsMembersResponse,
     UserTicketsResponse,
-    GlpiUsersInGroupsResponse, UploadTicketDocumentResponse, RequestTicketIdAndUsernameAndFileNameDto,
+    GlpiUsersInGroupsResponse,
+    UploadTicketDocumentResponse, RequestTicketIdAndUsernameAndStateDto,
 } from '~glpi/dto/post-request-dto';
 import {GetImagePreviewParams} from "~glpi/dto/get-request-dto";
 import {GLPI} from "~root/src/connectors/glpi/glpi-api.connector";
@@ -32,7 +32,7 @@ export class GLPI_Service {
     ) {
     }
 
-    /**region [ Wrappers ] */
+    //region [ Wrappers ]
     async RequestWrapper(res: Response, func: () => void) {
         try {
             func()
@@ -52,13 +52,13 @@ export class GLPI_Service {
                 // await glpi.kill_session()
             }
         } else {
-            return res.status(HttpStatus.UNAUTHORIZED).json([])
+            return res.status(HttpStatus.BAD_REQUEST).json({status: 'error', message: 'Could not log in to GLPI'})
         }
     }
 
     // endregion
 
-    /**region [ Ticket list ] */
+    //region [ Ticket list ]
     async GetUserTickets(dto: RequestUsernameDto, res: Response) {
         await this.RequestWrapper(res, async () => {
             const ret: UserTicketsResponse[] = await this.glpi.query(`
@@ -115,7 +115,7 @@ export class GLPI_Service {
 
     // endregion
 
-    /**region [ Ticket info ] */
+    //region [ Ticket info ]
     async GetUserAccessOnTicket(dto: RequestTicketIdAndUsernameDto, res: Response) {
         await this.RequestWrapper(res, async () => {
             const ret: UserAccessOnTicket[] = await this.glpi.query(`
@@ -140,13 +140,12 @@ export class GLPI_Service {
                      , c.completename as category
                      , t.date_creation
                      , t.time_to_resolve
-                     , t.solvedate    as date_solve
-                     , t.closedate    as date_close
+                     , t.solvedate
+                     , t.closedate
                 from glpi_tickets t
                          left join glpi_itilcategories c on t.itilcategories_id = c.id
                 where t.id = ${dto.id};`)
 
-            console.log(ret)
             if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret[0])
             else res.status(HttpStatus.BAD_REQUEST).json([]);
         })
@@ -251,34 +250,9 @@ export class GLPI_Service {
         })
     }
 
-    async OldCreateTicketFollowup(dto: TicketFollowupDto, res: Response) {
-        await this.RequestWrapper(res, async () => {
-            const ret: TicketFollowupsResponse = await this.glpi.query(`
-                insert into glpi_itilfollowups ( itemtype
-                                               , items_id
-                                               , date
-                                               , users_id
-                                               , users_id_editor
-                                               , content
-                                               , date_mod
-                                               , date_creation)
-                values ( 'Ticket'
-                       , ${dto.ticket_id}
-                       , NOW()
-                       , (select id from glpi_users where name = '${dto.username}')
-                       , 0
-                       , '${dto.text}'
-                       , NOW()
-                       , NOW());`)
-
-            if (ret) res.status(HttpStatus.OK).json(ret)
-            else res.status(HttpStatus.BAD_REQUEST).json([]);
-        })
-    }
-
     // endregion
 
-    /** region [ Phonebook ] */
+    // region [ Phonebook ]
     async GetGlpiUsersInGroups(res: Response) {
         await this.RequestWrapper(res, async () => {
             const ret: GlpiUsersInGroupsResponse[] = await this.glpi.query(`
@@ -303,22 +277,33 @@ export class GLPI_Service {
 
     // endregion
 
-    /**region [GLPI API] */
+    //region [ GLPI API ]
     async CreateTicketFollowup(dto: TicketFollowupDto, res: Response) {
         await this.GlpiApiWrapper(dto.username, this.glpi, res, async (glpi) => {
-            const ret = await glpi.create_followup(dto.ticket_id, dto.text)
+            const ret = await glpi.CreateFollowup(dto.ticket_id, dto.text)
 
-            res.status(ret.status).json({id:ret.data.id, message: ret.data.message, userId: glpi.userId, userFIO: glpi.userFIO })
+            res.status(ret.status).json({
+                id: ret.data.id,
+                message: ret.data.message,
+                userId: glpi.userId,
+                userFIO: glpi.userFIO
+            })
         })
     }
 
-    async UploadTicketDocument(files: Express.Multer.File[], dto: RequestTicketIdAndUsernameAndFileNameDto, res: Response) {
+    async SwitchTicketNotifications(dto: RequestTicketIdAndUsernameAndStateDto, res: Response) {
+        await this.GlpiApiWrapper(dto.username, this.glpi, res, async (glpi) => {
+            const ret = await glpi.SwitchTicketNotification(dto.id, dto.state)
+
+            if (ret) res.status(ret.status).json(ret.data)
+            else res.status(HttpStatus.BAD_REQUEST).json([]);
+        })
+    }
+
+    async UploadTicketDocument(files: Express.Multer.File[], dto: RequestTicketIdAndUsernameDto, res: Response) {
         if (files) {
-            files.forEach(file =>{
-                console.log(decodeURIComponent(file.originalname))
-            })
-            await this.GlpiApiWrapper(dto.username, this.glpi, res, async (glpi) => {
-                const ret: UploadTicketDocumentResponse = await glpi.upload_ticket_document(files, dto.id)
+            await this.GlpiApiWrapper('portal_reader', this.glpi, res, async (glpi) => {
+                const ret: UploadTicketDocumentResponse = await glpi.UploadTicketDocument(files, dto.id, dto.username)
                 res.status(ret.status).json(ret)
             })
         } else {
@@ -336,7 +321,7 @@ export class GLPI_Service {
             filename = _ret[0].filename
         }
         await this.GlpiApiWrapper(dto.username, this.glpi, res, async (glpi) => {
-            const ret = await glpi.download_document(dto.id)
+            const ret = await glpi.DownloadDocument(dto.id)
 
             res.set('Content-Disposition', `attachment; filename=${encodeURIComponent(filename)}`)
             res.set('Content-Type', 'application/octet-stream');
@@ -359,14 +344,12 @@ export class GLPI_Service {
         } else {
             if (isHorizontal) {
                 if (meta.width > maxWidth) {
-                    console.log('T S', maxHeight, Math.round(meta.height * maxWidth / meta.width))
                     return image.resize(maxWidth, Math.round(meta.height * maxWidth / meta.width)).toBuffer()
                 } else {
                     return image.toBuffer()
                 }
             } else {
                 if (meta.height > maxHeight) {
-                    console.log('T S', Math.round(meta.width * maxHeight / meta.height), maxHeight)
                     return image.resize(Math.round(meta.width * maxHeight / meta.height), maxHeight).toBuffer()
                 } else {
                     return image.toBuffer()
@@ -389,7 +372,7 @@ export class GLPI_Service {
                 filename = _ret[0].filename
             }
             await this.GlpiApiWrapper(params.username, this.glpi, res, async (glpi) => {
-                const ret = await glpi.download_document(params.id)
+                const ret = await glpi.DownloadDocument(params.id)
                 if (ret.status === HttpStatus.OK) {
                     if (ret.mime.split('/').length > 0 && ret.mime.split('/')[0] === 'image') {
                         const sharp = require('sharp')
@@ -460,7 +443,7 @@ export class GLPI_Service {
                         }), ttl)
                     }
                 } else {
-                    res.status(ret.status === HttpStatus.UNAUTHORIZED ? HttpStatus.BAD_REQUEST : ret.status ).json([])
+                    res.status(ret.status).json([])
                 }
             })
         } else {
@@ -468,11 +451,13 @@ export class GLPI_Service {
         }
     }
 
+    // ToDo ctd
     async Test(res: Response) {
         await this.GlpiApiWrapper('Welz', this.glpi, res, async (glpi) => {
-            const ret = await glpi.get_item('Location', 37)
-            res.status(ret.status).json(ret)
+            let ret = await glpi.GetUserId('portal_reader')
+            res.status(HttpStatus.OK).json(ret)
         })
     }
+
     //endregion
 }

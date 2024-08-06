@@ -1,4 +1,4 @@
-import {Column, Entity, ManyToOne, OneToMany, PrimaryGeneratedColumn, Unique} from 'typeorm';
+import {Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn} from 'typeorm';
 import {FORMS_DB_CONNECTION} from '~root/src/constants';
 import {Form} from "~form/entity/form.entity";
 import {TemplateCondition} from "~form/entity/template.conditions.entity";
@@ -14,7 +14,11 @@ export class Template {
         () => Form,
         form => form.templates,
     )
+    @JoinColumn({name: 'formId'})
     form: Form
+
+    @Column({type: 'integer'})
+    formId: number
 
     @Column({type: 'jsonb'})
     data: { [key: string]: string | number }

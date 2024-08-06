@@ -1,13 +1,7 @@
 import {ApiProperty} from '@nestjs/swagger';
+import {AccessoryTypeEnum, ChatItemTypeEnum, MemberTypeEnum, RequestTypeEnum, StatusEnum} from "~glpi/types";
 
 /**region [ Global ] */
-export type RequestTypeEnum = 1 | 2  // 1 - инцидент, 2 - запрос
-export type StatusEnum = 1 | 2 | 3 | 4 | 5 | 6  // 1 - новая, 2 - в работе, 3 - запланирована, 4 - в ожидании, 5 - решена, 6 - закрыта
-export type MemberTypeEnum = 1 | 2  // 1 - пользователь, 2 - группа
-export type AccessoryTypeEnum = 1 | 2 | 3  // 1 - инициатор, 2 - исполнитель, 3 - наблюдатель
-export type ChatItemTypeEnum = 'Service' | 'Blank' | 'Message' | 'File' | 'Image' | 'Solution'
-export type sideTypeEnum = 1 | 2  // 0 - право, 1 - лево
-
 /**
  * @param {string} name
  */
@@ -56,13 +50,16 @@ export class UserTicketsResponse {
     @ApiProperty()
     id: number
 
-    @ApiProperty({description: '1 - инцидент, 2 - запрос', enum: [1,2]})
+    @ApiProperty({description: '1 - инцидент, 2 - запрос', enum: [1, 2]})
     type: RequestTypeEnum
 
     @ApiProperty()
     name: string
 
-    @ApiProperty({description: '1 - новая, 2 - в работе, 3 - запланирована, 4 - в ожидании, 5 - решена, 6 - закрыта', enum: [1,2,3,4,5,6]})
+    @ApiProperty({
+        description: '1 - новая, 2 - в работе, 3 - запланирована, 4 - в ожидании, 5 - решена, 6 - закрыта',
+        enum: [1, 2, 3, 4, 5, 6]
+    })
     status: StatusEnum
 
     @ApiProperty()
@@ -101,7 +98,6 @@ export class TicketsMembersResponse {
 // endregion
 
 /**region [ Ticket info ] */
-
 /**region [ Requests ] */
 /**
  * @param {number} ticket_id
@@ -153,10 +149,13 @@ export class TicketInfoResponse {
     @ApiProperty()
     name: string
 
-    @ApiProperty({description: '1 - новая, 2 - в работе, 3 - запланирована, 4 - в ожидании, 5 - решена, 6 - закрыта', enum: [1,2,3,4,5,6]})
+    @ApiProperty({
+        description: '1 - новая, 2 - в работе, 3 - запланирована, 4 - в ожидании, 5 - решена, 6 - закрыта',
+        enum: [1, 2, 3, 4, 5, 6]
+    })
     status: StatusEnum
 
-    @ApiProperty({description: '1 - инцидент, 2 - запрос', enum: [1,2]})
+    @ApiProperty({description: '1 - инцидент, 2 - запрос', enum: [1, 2]})
     type: RequestTypeEnum
 
     @ApiProperty()
@@ -215,13 +214,16 @@ export class TicketChatResponse {
     @ApiProperty()
     name: string
 
-    @ApiProperty({description: '0 - право, 1 - лево', enum: [0, 1]})
-    sideLeft: sideTypeEnum
+    @ApiProperty({description: 'true - лево, false - право'})
+    sideLeft: boolean
 
     @ApiProperty()
     id: number
 
-    @ApiProperty({description: 'Ticket description = Message', enum: ['Service', 'Blank', 'Message', 'File', 'Image', 'Solution']})
+    @ApiProperty({
+        description: 'Ticket description = Message',
+        enum: ['Service', 'Blank', 'Message', 'File', 'Image', 'Solution']
+    })
     type: ChatItemTypeEnum
 
     @ApiProperty()
@@ -309,13 +311,21 @@ export class GlpiUsersInGroupsResponse {
 /**region [ GLPI API ] */
 
 /**region [ Requests ] */
-export class RequestTicketIdAndUsernameAndFileNameDto {
+/**
+ * @param {number} id
+ * @param {string} username
+ */
+export class RequestTicketIdAndUsernameAndStateDto {
     @ApiProperty()
     id: number
 
     @ApiProperty()
     username: string
+
+    @ApiProperty()
+    state: 0 | 1
 }
+
 // endregion
 
 /**region [ Response ] */
@@ -386,7 +396,7 @@ class UploadTicketDocumentUploadResult {
 /**
  * @param {number} id
  * @param {string} message
- * @param {{ string: UploadTicketDocumentUploadResult[] }} upload_result
+ * @param { [key: string]: UploadTicketDocumentUploadResult[] } upload_result
  */
 export class UploadTicketDocumentInternalResponse {
     @ApiProperty()
@@ -396,7 +406,7 @@ export class UploadTicketDocumentInternalResponse {
     message: string
 
     @ApiProperty()
-    upload_result: { string: UploadTicketDocumentUploadResult[] }
+    upload_result: { [key: string]: UploadTicketDocumentUploadResult[] }
 }
 
 /**
@@ -408,14 +418,12 @@ export class UploadTicketDocumentResponse {
     @ApiProperty()
     status: number
 
-    @ApiProperty()
-    ticket_id: number
+    // @ApiProperty()
+    // ticket_id: number
 
     @ApiProperty()
     data: UploadTicketDocumentInternalResponse[]
-
 }
-
 
 
 /**

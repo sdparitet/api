@@ -3,20 +3,6 @@ import {FORMS_DB_CONNECTION} from '~root/src/constants';
 import {Block} from "~form/entity/block.entity";
 import {Template} from "~form/entity/template.entity";
 
-/**
- * @param {number} id
- * @param {string} title
- * @param {string} description
- * @param {boolean} is_active
- * @param {Block[]} blocks
- */
-export interface IFrom_Dto {
-    id: number
-    title: string
-    description: string | null
-    is_active: boolean
-    blocks: Block[]
-}
 
 @Entity({database: FORMS_DB_CONNECTION})
 export class Form {

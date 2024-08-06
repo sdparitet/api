@@ -9,7 +9,7 @@ export class RequestGlpiSelectDto {
     username: string
 
     @ApiProperty()
-    value_field: string
+    field_id: number
 }
 
 /**
@@ -18,22 +18,6 @@ export class RequestGlpiSelectDto {
 export class GetFormsParams {
     @ApiProperty()
     show_inactive?: string
-}
-
-/**
- * @param {number} form_id
- */
-export class GetFormBlockParams {
-    @ApiProperty()
-    form_id: number
-}
-
-/**
- * @param {number} block_id
- */
-export class GetBlockFieldsParams {
-    @ApiProperty()
-    block_id: number
 }
 
 /**

@@ -1,6 +1,6 @@
-{
+﻿{
     "name": "api",
-    "version": "3.0.23.1",
+    "version": "3.0.31",
     "author": "Mozhaev.AI",
     "private": true,
     "scripts": {
@@ -13,7 +13,7 @@
         "start:debug": "cross-env NODE_ENV=development NEST_DEBUG=true nest start --debug --watch",
         "start:prod": "node dist/main",
         "typeorm": "typeorm-ts-node-esm"
-    },
+        },
     "dependencies": {
         "@nestjs/axios": "^3.0.1",
         "@nestjs/cache-manager": "^2.2.2",
@@ -31,6 +31,8 @@
         "cache-manager": "^5.7.2",
         "cache-manager-redis-store": "^2.0.0",
         "class-validator": "^0.14.0",
+        "dayjs": "^1.11.12",
+        "dayjs-plugin-utc": "^0.1.2",
         "dotenv": "^16.3.1",
         "form-data": "^4.0.0",
         "immer": "^10.0.3",
@@ -45,7 +47,7 @@
         "swagger-ui-express": "^5.0.0",
         "typeorm": "^0.3.20",
         "uuid": "^9.0.1"
-    },
+        },
     "devDependencies": {
         "@nestjs/cli": "^10.2.1",
         "@nestjs/schematics": "^10.0.3",
@@ -59,5 +61,5 @@
         "ts-node": "^10.9.2",
         "tsconfig-paths": "^4.2.0",
         "typescript": "^5.3.3"
-    }
+        }
 }

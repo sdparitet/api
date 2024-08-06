@@ -24,18 +24,18 @@ import {
     TicketsMembersResponse,
     RequestTicketIdAndUsernameDto,
     TicketFollowupDto,
-    TicketFollowupsResponse,
     UserAccessOnTicket,
     CreateTicketFollowupResponse,
     ResponseGetImagePreviewResponse,
     GlpiUsersInGroupsResponse,
-    UploadTicketDocumentResponse, RequestTicketIdAndUsernameAndFileNameDto,
+    UploadTicketDocumentResponse, RequestTicketIdAndUsernameAndStateDto,
 } from '~glpi/dto/post-request-dto';
 import {Response} from "express";
 
 import {GLPI_DB_CONNECTION} from '~root/src/constants';
 import {GetImagePreviewParams} from "~glpi/dto/get-request-dto";
 import {FilesInterceptor} from "@nestjs/platform-express";
+import {Portal_Roles} from "~roles/portal.roles";
 
 @ApiTags(GLPI_DB_CONNECTION)
 @Controller("glpi")
@@ -45,8 +45,8 @@ export class GLPI_Controller {
     ) {
     }
 
-    /**region [ Ticket list ] */
-    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
+    //region [ Ticket list ]
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
     @Post("/GetUserTickets")
     @Header("content-type", "application/json")
     @ApiBody({required: false, type: RequestUsernameDto})
@@ -55,7 +55,7 @@ export class GLPI_Controller {
         return this.glpiService.GetUserTickets(dto, res);
     }
 
-    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
     @Post("/GetTicketsMembers")
     @Header("content-type", "application/json")
     @ApiBody({required: true, type: RequestUsernameDto})
@@ -66,8 +66,8 @@ export class GLPI_Controller {
 
     // endregion
 
-    /**region [ Ticket info ] */
-    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
+    //region [ Ticket info ]
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
     @Post("/GetUserAccessOnTicket")
     @Header("content-type", "application/json")
     @ApiBody({required: true, type: RequestTicketIdAndUsernameDto})
@@ -76,7 +76,7 @@ export class GLPI_Controller {
         return this.glpiService.GetUserAccessOnTicket(dto, res);
     }
 
-    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
     @Post("/GetTicketInfo")
     @Header("content-type", "application/json")
     @ApiBody({required: true, type: RequestTicketIdAndUsernameDto})
@@ -85,7 +85,7 @@ export class GLPI_Controller {
         return this.glpiService.GetTicketInfo(dto, res);
     }
 
-    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
     @Post("/GetTicketMembers")
     @Header("content-type", "application/json")
     @ApiBody({required: true, type: RequestTicketIdDto})
@@ -94,7 +94,7 @@ export class GLPI_Controller {
         return this.glpiService.GetTicketMembers(dto, res);
     }
 
-    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
     @Post("/GetTicketChat")
     @Header("content-type", "application/json")
     @ApiBody({required: true, type: RequestTicketIdAndUsernameDto})
@@ -103,19 +103,10 @@ export class GLPI_Controller {
         return this.glpiService.GetTicketChat(dto, res);
     }
 
-    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
-    @Post("/OldCreateTicketFollowup")
-    @Header("content-type", "application/json")
-    @ApiBody({required: true, type: TicketFollowupDto})
-    @ApiResponse({type: [TicketFollowupsResponse]})
-    stf(@Body() dto: TicketFollowupDto, @Res() res: Response) {
-        return this.glpiService.OldCreateTicketFollowup(dto, res);
-    }
-
     // endregion
 
-    /**region [ Phonebook ] */
-    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
+    //region [ Phonebook ]
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
     @Get("/GetGlpiUsersInGroups")
     @Header("content-type", "application/json")
     @ApiResponse({type: [GlpiUsersInGroupsResponse]})
@@ -125,8 +116,8 @@ export class GLPI_Controller {
 
     // endregion
 
-    /**region [GLPI API] */
-    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
+    //region [ GLPI API ]
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
     @Post("/CreateTicketFollowup")
     @Header("content-type", "application/json")
     @ApiBody({required: true, type: TicketFollowupDto})
@@ -135,16 +126,25 @@ export class GLPI_Controller {
         return this.glpiService.CreateTicketFollowup(dto, res);
     }
 
-    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+    @Post("/SwitchTicketNotifications")
+    @Header("content-type", "application/json")
+    @ApiBody({required: true, type: RequestTicketIdAndUsernameAndStateDto})
+    // @ApiResponse({type: [TicketFollowupsResponse]})
+    stf(@Body() dto: RequestTicketIdAndUsernameAndStateDto, @Res() res: Response) {
+        return this.glpiService.SwitchTicketNotifications(dto, res);
+    }
+
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
     @Post("/UploadTicketDocument")
-    @ApiBody({required: true, type: RequestTicketIdAndUsernameAndFileNameDto})
+    @ApiBody({required: true, type: RequestTicketIdAndUsernameDto})
     @ApiResponse({type: [UploadTicketDocumentResponse]})
-    @UseInterceptors(FilesInterceptor('files', 100,{limits: {fileSize: 1024 * 1024 * 80}}))
-    ud(@UploadedFiles() files: Express.Multer.File[], @Body() dto: RequestTicketIdAndUsernameAndFileNameDto, @Res() res: Response) {
+    @UseInterceptors(FilesInterceptor('files', 100, {limits: {fileSize: 1024 * 1024 * 80}}))
+    ud(@UploadedFiles() files: Express.Multer.File[], @Body() dto: RequestTicketIdAndUsernameDto, @Res() res: Response) {
         return this.glpiService.UploadTicketDocument(files, dto, res);
     }
 
-    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
     @Post("/DownloadDocument")
     @Header("content-type", "application/octet-stream")
     @ApiBody({required: true, type: RequestTicketIdAndUsernameDto})
@@ -152,7 +152,7 @@ export class GLPI_Controller {
         return this.glpiService.DownloadDocument(dto, res);
     }
 
-    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
     @Get("/GetImagePreview")
     @Header("content-type", "application/json; charset=utf-8")
     @ApiResponse({type: [ResponseGetImagePreviewResponse]})
@@ -160,7 +160,7 @@ export class GLPI_Controller {
         return this.glpiService.GetImagePreview(params, res);
     }
 
-    @Roles(GLPI_Roles.GLPI_DATA, ...Object.values(GlobalRoles))
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
     @Get("/test")
     @Header("content-type", "application/json; charset=utf-8")
     test(@Res() res: Response) {

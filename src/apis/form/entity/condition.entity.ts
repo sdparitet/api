@@ -9,7 +9,6 @@ import {Block} from "~form/entity/block.entity";
 import {CompareType, ConditionLogic, ShowRule} from "~form/types";
 
 
-
 @Entity({database: FORMS_DB_CONNECTION})
 @Unique('target_block_order_pk', ['target_block', 'order'])
 @Unique('target_field_order_pk', ['target_field', 'order'])
@@ -58,7 +57,7 @@ export class Condition {
     @Column({type: 'varchar', nullable: true})
     condition_value: string
 
-    @Column({type: 'varchar', enum: ConditionLogic, default: ConditionLogic.AND})
+    @Column({type: 'integer', enum: ConditionLogic, default: ConditionLogic.AND})
     condition_logic: ConditionLogic
 
     @Column({type: 'integer'})

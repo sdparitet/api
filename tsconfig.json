@@ -20,17 +20,17 @@
     "resolveJsonModule": true,
 
     "paths": {
-      "~root/*"     : ["./*"],
-      "~roles/*"    : ["src/roles/*"],
-      "~guards/*"   : ["src/guards/*"],
-      "~utils/*"    : ["src/utils/*"],
+      "~root/*"        : ["./*"],
+      "~roles/*"       : ["src/roles/*"],
+      "~guards/*"      : ["src/guards/*"],
+      "~utils/*"       : ["src/utils/*"],
 
-      "~kpi/*"      : ["src/apis/kpi/*"],
-      "~staff/*"    : ["src/apis/staff/*"],
-      "~stat/*"     : ["src/apis/stat/*"],
-      "~glpi/*"     : ["src/apis/glpi/*"],
-      "~form/*"     : ["src/apis/form/*"],
+      "~kpi/*"         : ["src/apis/kpi/*"],
+      "~staff/*"       : ["src/apis/staff/*"],
+      "~stat/*"        : ["src/apis/stat/*"],
+      "~glpi/*"        : ["src/apis/glpi/*"],
+      "~form/*"        : ["src/apis/form/*"],
+      "~connectors/*"  : ["src/connectors/*"],
     }
-
   }
 }
