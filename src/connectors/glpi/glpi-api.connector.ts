@@ -1,10 +1,11 @@
-import axios, {AxiosResponse} from "axios";
+import {AxiosResponse} from "axios";
 import {InjectDataSource} from "@nestjs/typeorm";
 import {GLPI_DB_CONNECTION} from "~root/src/constants";
 import {DataSource} from "typeorm";
 import {ISearch, GlpiApiResponse, PayloadType, CriteriaType} from "~connectors/glpi/types";
 import {HttpStatus} from "@nestjs/common";
-import * as fs from "node:fs";
+import * as http from "node:http";
+import * as https from "node:https";
 
 
 export class GLPI {
@@ -24,8 +25,12 @@ export class GLPI {
             this._username = username
 
             this.session.defaults.validateStatus = (status: number) => status >= 200 && status < 500
+            this.session.defaults.httpAgent = new http.Agent({keepAlive: true})
+            this.session.defaults.httpsAgent = new https.Agent({keepAlive: true})
+            this.session.defaults.timeout = 10000
             this.session.defaults.baseURL = this._baseUrl
             this.session.defaults.headers.common = {
+                'User-Agent': 'Mozilla/5.0',
                 'Content-Type': 'application/json',
                 'App-Token': this._appToken,
             }
@@ -97,9 +102,17 @@ export class GLPI {
         return this.session.get('killSession')
     }
 
-    async GetItem(itemType: string, itemId: number): GlpiApiResponse {
-        const {status, data} = await this.session.get(`${itemType}/${itemId}`)
-        return {status: status === HttpStatus.UNAUTHORIZED ? HttpStatus.BAD_REQUEST : status, data: data}
+    async GetItem(itemType: string, itemId: number, retries: number = 3): GlpiApiResponse {
+        try {
+            const {status, data} = await this.session.get(`${itemType}/${itemId}`)
+            return {status: status === HttpStatus.UNAUTHORIZED ? HttpStatus.BAD_REQUEST : status, data: data}
+        } catch (err: any) {
+            console.log(err)
+            if (retries > 0) {
+                return await this.GetItem(itemType, itemId, retries - 1)
+            }
+            else return {status: HttpStatus.INTERNAL_SERVER_ERROR, data: err}
+        }
     }
 
     async GetAllItems(itemType: string): GlpiApiResponse {
@@ -134,9 +147,6 @@ export class GLPI {
                 break
             }
         } while (true)
-
-        console.log(allData)
-        console.log('User', this.userFIO)
 
         return {status: HttpStatus.OK, data: allData}
     }
@@ -193,13 +203,21 @@ export class GLPI {
         return {status: status === HttpStatus.UNAUTHORIZED ? HttpStatus.BAD_REQUEST : status, data: data}
     }
 
-    async AddItems(itemType: string, payload: PayloadType | PayloadType[]): GlpiApiResponse {
+    async AddItems(itemType: string, payload: PayloadType | PayloadType[], retries: number = 3): GlpiApiResponse {
+
         const _payload = {
             input: payload
         }
-
-        const {status, data} = await this.session.post(itemType, _payload)
-        return {status, data}
+        try {
+            const ret = await this.session.post(itemType, _payload)
+            const {status, data} = ret
+            return {status, data}
+        } catch (err: any) {
+            if (retries > 0) {
+                return await this.AddItems(itemType, payload, retries - 1)
+            }
+            else return {status: HttpStatus.INTERNAL_SERVER_ERROR, data: err}
+        }
     }
 
     async UpdateItem(itemType: string, payload: PayloadType | PayloadType[]): GlpiApiResponse {
@@ -292,7 +310,7 @@ export class GLPI {
             users_id: userId,
         }))
 
-        const {status:foo, data:bar } =await this.AddItems('Document_Item', payload)
+        const {status: foo, data: bar} = await this.AddItems('Document_Item', payload)
 
         console.log(foo)
         console.log(bar)

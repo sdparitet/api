@@ -12,6 +12,7 @@ import {Field, FieldType} from "~form/entity/field.entity";
 import {Template} from "~form/entity/template.entity";
 import {CompareType, ConditionLogic, Filter, FilterCompareType, PayloadType, SingleFilter} from "~form/types";
 import {GLPI} from "~root/src/connectors/glpi/glpi-api.connector";
+import dayjs from "dayjs";
 
 
 @Injectable()
@@ -108,7 +109,7 @@ export class Form_Service {
     }
 
     async ApplyFilter(item: {}, filter: SingleFilter) {
-        const {type, logic} = filter
+        const {type} = filter
         const key = Object.keys(filter).find(k => !['type', 'logic', 'filters'].includes(k))
         const value = filter[key]
 
@@ -155,7 +156,7 @@ export class Form_Service {
         }
     }
 
-    async FilterItem(item: {}, filters: Filter[], flag = false) {
+    async FilterItem(item: {}, filters: Filter[]) {
         let result: boolean = undefined
 
         for (const filter of filters) {
@@ -196,7 +197,13 @@ export class Form_Service {
 
                 const data = ret.data.map((item: any) => ({
                     value: item.id,
-                    label: typeof field.values[0]['value_field'] === 'string' ? item[field.values[0]['value_field']] : field.values[0]['value_field'].map((key: any) => item[key]).join(' '),
+                    label: field.values[0]['show_value_field'] ?
+                        typeof field.values[0]['show_value_field'] === 'string' ?
+                            item[field.values[0]['show_value_field']]
+                            : field.values[0]['show_value_field'].map((key: any) => item[key]).join(' ')
+                        : typeof field.values[0]['value_field'] === 'string' ?
+                            item[field.values[0]['value_field']]
+                            : field.values[0]['value_field'].map((key: any) => item[key]).join(' '),
                 })).sort((a: {
                     id: number,
                     label: string
@@ -236,28 +243,48 @@ export class Form_Service {
         dayjs.extend(timezone)
 
         let label = ''
-        switch (field.type) {
-            case FieldType.glpi_select:
-                const ret = await glpi.GetItem(field.values[0].itemtype.toString(), Number(value))
-                label = ret.data[field.values[0].value_field]
-                break
-            case FieldType.datetime:
-                label = dayjs(value).utc().format('DD.MM.YYYY HH:mm')
-                break
-            case FieldType.date:
-                label = dayjs(value).utc().format('DD.MM.YYYY')
-                break
-            case FieldType.time:
-                label = dayjs(value).utc().format('HH:mm')
-                break
-            default:
-                field.values.map(item => {
-                    if (item.value.toString() === value) {
-                        label = item.label
-                    }
-                })
+        if (value === undefined || value === null) {
+            label = 'Н/Д'
+        } else {
+            switch (field.type) {
+                case FieldType.glpi_select:
+                    const ret = await glpi.GetItem(field.values[0].itemtype.toString(), Number(value))
+                    label = field.values[0]['show_value_field'] ?
+                        typeof field.values[0]['show_value_field'] === 'string' ?
+                            ret.data[field.values[0]['show_value_field']]
+                            : field.values[0]['show_value_field'].map((key: any) => ret.data[key]).join(' ')
+                        : typeof field.values[0]['value_field'] === 'string' ?
+                            ret.data[field.values[0]['value_field']]
+                            : field.values[0]['value_field'].map((key: any) => ret.data[key]).join(' ')
+                    break
+                case FieldType.datetime:
+                    label = dayjs(value).utc().format('DD.MM.YYYY HH:mm')
+                    break
+                case FieldType.date:
+                    label = dayjs(value).utc().format('DD.MM.YYYY')
+                    break
+                case FieldType.time:
+                    label = dayjs(value).utc().format('HH:mm')
+                    break
+                default:
+                    field.values.map(item => {
+                        if (item.value.toString() === value) {
+                            label = item.label
+                        }
+                    })
+            }
         }
         return label
+    }
+
+    async TimeReplacer(minus: boolean, number: number, type: string) {
+        const dayjs = require('dayjs')
+        const now = dayjs()
+        if (minus) {
+            return now.subtract(number, type).format('YYYY-MM-DDTHH:mm:ss.SSS[Z]')
+        } else {
+            return now.add(number, type).format('YYYY-MM-DDTHH:mm:ss.SSS[Z]')
+        }
     }
 
     async Answer(dto: AnswerDto, res: Response) {
@@ -293,7 +320,7 @@ export class Form_Service {
                     })
                     isValid && validTemplates.push(template)
                 } else {
-                    validTemplates.push(form.templates[0])
+                    validTemplates.push(template)
                 }
             })
 
@@ -319,6 +346,16 @@ export class Form_Service {
                             }
                         }
 
+                        const timeMatches = [...template.data[key].matchAll(/(?<full>##t_(?<minus>-?)(?<number>\d+)(?<type>[Mdhm])##)/g)]
+                        for (const match of timeMatches) {
+                            fieldValue = fieldValue.replace(match.groups.full, await this.TimeReplacer(match.groups.minus === "-", Number(match.groups.number), match.groups.type))
+                        }
+
+                        const authorMatches = [...template.data[key].matchAll(/(?<full>##author##)/g)]
+                        for (const match of authorMatches) {
+                            fieldValue = fieldValue.replace(match.groups.full, String(await glpi.GetUserId(dto.username)))
+                        }
+
                         payload[key] = fieldValue
                     } else {
                         payload[key] = template.data[key]
@@ -328,7 +365,6 @@ export class Form_Service {
                 payloads.push(payload)
             }
 
-            // console.log(payloads)
             const ret = await glpi.AddItems('Ticket', payloads)
 
             if ([201, 207].includes(ret.status)) {
