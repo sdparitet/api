@@ -115,6 +115,32 @@ export class TicketFollowupDto {
     text: string
 }
 
+/**
+ * @param {number} ticket_id
+ * @param {number} user_id
+ * @param {AccessoryTypeEnum} accessoryType
+ */
+export class DeleteUserFromTicketRequest {
+    @ApiProperty()
+    ticket_id: number
+
+    @ApiProperty()
+    user_id: number
+
+    @ApiProperty()
+    accessoryType: AccessoryTypeEnum
+}
+
+export class AddUserFromTicketRequest {
+    @ApiProperty()
+    ticket_id: number
+
+    @ApiProperty()
+    user_id: number
+
+    @ApiProperty()
+    accessoryType: AccessoryTypeEnum
+}
 // endregion
 
 /**region [ Response ] */

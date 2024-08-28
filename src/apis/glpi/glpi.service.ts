@@ -1,9 +1,9 @@
-import {Injectable, HttpStatus, Inject} from "@nestjs/common";
-import {InjectDataSource} from "@nestjs/typeorm";
-import {DataSource} from "typeorm";
-import {Response} from "express";
+import { Injectable, HttpStatus, Inject } from "@nestjs/common"
+import { InjectDataSource } from "@nestjs/typeorm"
+import { DataSource } from "typeorm"
+import { Response } from "express"
 
-import {GLPI_DB_CONNECTION} from '~root/src/constants';
+import { GLPI_DB_CONNECTION } from '~root/src/constants'
 import {
     TicketChatResponse,
     TicketInfoResponse,
@@ -16,13 +16,14 @@ import {
     TicketsMembersResponse,
     UserTicketsResponse,
     GlpiUsersInGroupsResponse,
-    UploadTicketDocumentResponse, RequestTicketIdAndUsernameAndStateDto,
-} from '~glpi/dto/post-request-dto';
-import {GetImagePreviewParams} from "~glpi/dto/get-request-dto";
-import {GLPI} from "~root/src/connectors/glpi/glpi-api.connector";
-import {CACHE_MANAGER} from "@nestjs/cache-manager";
-import {Cache} from "cache-manager";
-import {Sharp} from "sharp";
+    UploadTicketDocumentResponse, RequestTicketIdAndUsernameAndStateDto, DeleteUserFromTicketRequest,
+} from '~glpi/dto/post-request-dto'
+import { GetImagePreviewParams } from "~glpi/dto/get-request-dto"
+import { GLPI } from "~root/src/connectors/glpi/glpi-api.connector"
+import { CACHE_MANAGER } from "@nestjs/cache-manager"
+import { Cache } from "cache-manager"
+import { Sharp } from "sharp"
+import { PayloadType } from '~connectors/glpi/types'
 
 @Injectable()
 export class GLPI_Service {
@@ -52,7 +53,7 @@ export class GLPI_Service {
                 // await glpi.kill_session()
             }
         } else {
-            return res.status(HttpStatus.BAD_REQUEST).json({status: 'error', message: 'Could not log in to GLPI'})
+            return res.status(HttpStatus.BAD_REQUEST).json({ status: 'error', message: 'Could not log in to GLPI' })
         }
     }
 
@@ -77,7 +78,7 @@ export class GLPI_Service {
                                WHERE tu.type = 1
                                  AND tu.users_id in (SELECT id FROM glpi_users u WHERE u.name = '${dto.username || ''}'));`)
             if (ret) res.status(HttpStatus.OK).json(ret)
-            else res.status(HttpStatus.BAD_REQUEST).json([]);
+            else res.status(HttpStatus.BAD_REQUEST).json([])
         })
     }
 
@@ -109,13 +110,22 @@ export class GLPI_Service {
                                                                 from glpi_users u2
                                                                 where u2.name = '${dto.username}'));`)
             if (ret) res.status(HttpStatus.OK).json(ret)
-            else res.status(HttpStatus.BAD_REQUEST).json([]);
+            else res.status(HttpStatus.BAD_REQUEST).json([])
         })
     }
 
     // endregion
 
     //region [ Ticket info ]
+    async GetUserAccess({ username }, res: Response) {
+        console.log(username)
+        await this.GlpiApiWrapper(username, this.glpi, res, async (glpi) => {
+            let ret = await glpi.GetUserRights()
+
+            res.status(HttpStatus.OK).json(ret)
+        })
+    }
+
     async GetUserAccessOnTicket(dto: RequestTicketIdAndUsernameDto, res: Response) {
         await this.RequestWrapper(res, async () => {
             const ret: UserAccessOnTicket[] = await this.glpi.query(`
@@ -147,7 +157,7 @@ export class GLPI_Service {
                 where t.id = ${dto.id};`)
 
             if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret[0])
-            else res.status(HttpStatus.BAD_REQUEST).json([]);
+            else res.status(HttpStatus.BAD_REQUEST).json([])
         })
     }
 
@@ -176,7 +186,7 @@ export class GLPI_Service {
                                    on tg.groups_id = g.id
                 where tickets_id = ${dto.id};`)
             if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret)
-            else res.status(HttpStatus.BAD_REQUEST).json([]);
+            else res.status(HttpStatus.BAD_REQUEST).json([])
         })
     }
 
@@ -224,29 +234,67 @@ export class GLPI_Service {
                 where s.itemtype = 'Ticket'
                   and items_id = ${dto.id}
                 union
-                select (select u.id
-                        from glpi_users u
-                        where id = ((select users_id
-                                     from glpi_tickets_users tu
-                                     where tu.tickets_id = ${dto.id}
-                                       and tu.type = 1))) as userId
+                select t.users_id_recipient              as userId
                      , (select CONCAT(u.realname, ' ', u.firstname)
                         from glpi_users u
-                        where id = ((select users_id
-                                     from glpi_tickets_users tu
-                                     where tu.tickets_id = ${dto.id}
-                                       and tu.type = 1))) as name
-                     , 0                                  as sideLeft
-                     , t.id                               as id
-                     , 'Message'                          as type
-                     , t.content                          as text
+                        where id = t.users_id_recipient) as name
+                     , 0                                 as sideLeft
+                     , t.id                              as id
+                     , 'Message'                         as type
+                     , t.content                         as text
                      , t.date_creation as time
                 from glpi_tickets t
                 where id = ${dto.id}
                 order by time;`)
 
             if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret)
-            else res.status(HttpStatus.BAD_REQUEST).json([]);
+            else res.status(HttpStatus.BAD_REQUEST).json([])
+        })
+    }
+
+    async DeleteUserFromTicket(dto: DeleteUserFromTicketRequest, res: Response) {
+        await this.GlpiApiWrapper('portal_reader', this.glpi, res, async (glpi) => {
+            const ret = await this.glpi.query(`
+                select id
+                from glpi_tickets_users
+                where tickets_id = ${dto.ticket_id}
+                  and users_id = ${dto.user_id}
+                  and type = ${dto.accessoryType};`)
+
+            if (!ret || ret.length === 0) res.status(HttpStatus.BAD_REQUEST).json([])
+            else {
+                const pay = [{ id: ret[0].id }]
+                await glpi.DeleteItems('Ticket_User', pay)
+                res.status(HttpStatus.OK).json([])
+            }
+        })
+    }
+
+    async GetUserInfoByUsername(params: RequestUsernameDto, res: Response) {
+        await this.GlpiApiWrapper(params.username, this.glpi, res, async (glpi) => {
+            const data =  {
+                id: glpi.sessionInfo.session.glpiID,
+                name: glpi.sessionInfo.session.glpifriendlyname,
+            }
+
+            if (data) res.status(HttpStatus.OK).json(data)
+            else res.status(HttpStatus.BAD_REQUEST).json([])
+        })
+    }
+
+    async AddUsersInTicket(dto: DeleteUserFromTicketRequest[], res: Response) {
+        await this.GlpiApiWrapper('portal_reader', this.glpi, res, async (glpi) => {
+            const payload: PayloadType[] = dto.map(user => ({
+                tickets_id: user.ticket_id,
+                users_id: user.user_id,
+                type: user.accessoryType,
+            }))
+
+            console.log(payload)
+
+            const {status, data} = await glpi.AddItems('Ticket_User', payload)
+
+            res.status(status).json(data)
         })
     }
 
@@ -271,7 +319,7 @@ export class GLPI_Service {
                   and u.groups_id <> 0
                 order by g.name, name;`)
             if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret)
-            else res.status(HttpStatus.BAD_REQUEST).json([]);
+            else res.status(HttpStatus.BAD_REQUEST).json([])
         })
     }
 
@@ -296,7 +344,7 @@ export class GLPI_Service {
             const ret = await glpi.SwitchTicketNotification(dto.id, dto.state)
 
             if (ret) res.status(ret.status).json(ret.data)
-            else res.status(HttpStatus.BAD_REQUEST).json([]);
+            else res.status(HttpStatus.BAD_REQUEST).json([])
         })
     }
 
@@ -307,7 +355,7 @@ export class GLPI_Service {
                 res.status(ret.status).json(ret)
             })
         } else {
-            res.status(HttpStatus.BAD_REQUEST).json({status: 'error', message: 'File not provided'})
+            res.status(HttpStatus.BAD_REQUEST).json({ status: 'error', message: 'File not provided' })
         }
     }
 
@@ -324,7 +372,7 @@ export class GLPI_Service {
             const ret = await glpi.DownloadDocument(dto.id)
 
             res.set('Content-Disposition', `attachment; filename=${encodeURIComponent(filename)}`)
-            res.set('Content-Type', 'application/octet-stream');
+            res.set('Content-Type', 'application/octet-stream')
             res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition')
             res.set('Content-Length', ret.data.length.toString())
 
@@ -452,9 +500,10 @@ export class GLPI_Service {
     }
 
     // ToDo ctd
-    async Test(res: Response) {
-        await this.GlpiApiWrapper('Welz', this.glpi, res, async (glpi) => {
-            let ret = await glpi.GetUserId('portal_reader')
+    async Test(res: Response, params: any) {
+        await this.GlpiApiWrapper('portal_reader', this.glpi, res, async (glpi) => {
+            let ret = await glpi.GetUserRights(params.user)
+
             res.status(HttpStatus.OK).json(ret)
         })
     }

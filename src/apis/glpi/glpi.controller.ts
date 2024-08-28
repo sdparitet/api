@@ -28,12 +28,12 @@ import {
     CreateTicketFollowupResponse,
     ResponseGetImagePreviewResponse,
     GlpiUsersInGroupsResponse,
-    UploadTicketDocumentResponse, RequestTicketIdAndUsernameAndStateDto,
-} from '~glpi/dto/post-request-dto';
+    UploadTicketDocumentResponse, RequestTicketIdAndUsernameAndStateDto, DeleteUserFromTicketRequest,
+} from '~glpi/dto/post-request-dto'
 import {Response} from "express";
 
 import {GLPI_DB_CONNECTION} from '~root/src/constants';
-import {GetImagePreviewParams} from "~glpi/dto/get-request-dto";
+import { GetImagePreviewParams, GetUserAccessResponse } from "~glpi/dto/get-request-dto"
 import {FilesInterceptor} from "@nestjs/platform-express";
 import {Portal_Roles} from "~roles/portal.roles";
 
@@ -77,6 +77,14 @@ export class GLPI_Controller {
     }
 
     @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+    @Get("/GetUserAccess")
+    @Header("content-type", "application/json")
+    @ApiResponse({type: [GetUserAccessResponse]})
+    gua(@Query() params: { username: string }, @Res() res: Response) {
+        return this.glpiService.GetUserAccess(params, res);
+    }
+
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
     @Post("/GetTicketInfo")
     @Header("content-type", "application/json")
     @ApiBody({required: true, type: RequestTicketIdAndUsernameDto})
@@ -103,6 +111,28 @@ export class GLPI_Controller {
         return this.glpiService.GetTicketChat(dto, res);
     }
 
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+    @Post("/DeleteUserFromTicket")
+    @Header("content-type", "application/json")
+    @ApiBody({required: true, type: DeleteUserFromTicketRequest})
+    duft(@Body() dto: DeleteUserFromTicketRequest, @Res() res: Response) {
+        return this.glpiService.DeleteUserFromTicket(dto, res);
+    }
+
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+    @Get("/GetUserIdByUsername")
+    @Header("content-type", "application/json")
+    guibu(@Query() params: RequestUsernameDto, @Res() res: Response) {
+        return this.glpiService.GetUserInfoByUsername(params, res);
+    }
+
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+    @Post("/AddUsersInTicket")
+    @Header("content-type", "application/json")
+    @ApiBody({required: true, type: Array<DeleteUserFromTicketRequest>})
+    auft(@Body() dto: DeleteUserFromTicketRequest[], @Res() res: Response) {
+        return this.glpiService.AddUsersInTicket(dto, res);
+    }
     // endregion
 
     //region [ Phonebook ]
@@ -163,8 +193,8 @@ export class GLPI_Controller {
     @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
     @Get("/test")
     @Header("content-type", "application/json; charset=utf-8")
-    test(@Res() res: Response) {
-        return this.glpiService.Test(res);
+    test(@Query() params: any, @Res() res: Response) {
+        return this.glpiService.Test(res, params);
     }
 
     // endregion

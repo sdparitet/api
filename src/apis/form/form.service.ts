@@ -277,13 +277,13 @@ export class Form_Service {
         return label
     }
 
-    async TimeReplacer(minus: boolean, number: number, type: string) {
+    async TimeReplacer(minus: boolean, number: number, type: string, readable: boolean = false) {
         const dayjs = require('dayjs')
         const now = dayjs()
         if (minus) {
-            return now.subtract(number, type).format('YYYY-MM-DDTHH:mm:ss.SSS[Z]')
+            return now.subtract(number, type).format(readable ? 'DD-MM-YYYY HH:mm:ss' : 'YYYY-MM-DDTHH:mm:ss.SSS[Z]')
         } else {
-            return now.add(number, type).format('YYYY-MM-DDTHH:mm:ss.SSS[Z]')
+            return now.add(number, type).format(readable ? 'DD-MM-YYYY HH:mm:ss' : 'YYYY-MM-DDTHH:mm:ss.SSS[Z]')
         }
     }
 
@@ -346,14 +346,17 @@ export class Form_Service {
                             }
                         }
 
-                        const timeMatches = [...template.data[key].matchAll(/(?<full>##t_(?<minus>-?)(?<number>\d+)(?<type>[Mdhm])##)/g)]
+                        const timeMatches = [...template.data[key].matchAll(/(?<full>##t_(?<minus>-?)(?<number>\d+)(?<type>[Mdhm])(?<readable>_r)?##)/g)]
                         for (const match of timeMatches) {
-                            fieldValue = fieldValue.replace(match.groups.full, await this.TimeReplacer(match.groups.minus === "-", Number(match.groups.number), match.groups.type))
+                            fieldValue = fieldValue.replace(match.groups.full, await this.TimeReplacer(match.groups.minus === "-", Number(match.groups.number), match.groups.type, !!match.groups.readable))
                         }
 
-                        const authorMatches = [...template.data[key].matchAll(/(?<full>##author##)/g)]
+                        const authorMatches = [...template.data[key].matchAll(/(?<full>##(?<sel>s_)?author##)/g)]
                         for (const match of authorMatches) {
-                            fieldValue = fieldValue.replace(match.groups.full, String(await glpi.GetUserId(dto.username)))
+                            const replacement = match.groups.sel
+                                ? await glpi.GetUserFio(dto.username)
+                                : await glpi.GetUserId(dto.username)
+                            fieldValue = fieldValue.replace(match.groups.full, String(replacement))
                         }
 
                         payload[key] = fieldValue
