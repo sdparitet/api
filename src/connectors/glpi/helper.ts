@@ -5,7 +5,7 @@ import {
     ITaskRights,
     RightsType,
     InterfaceType,
-    TicketStatuses, IGlpiSession
+    TicketStatuses, IGlpiSession, IAgreementRights
 } from "~connectors/glpi/types"
 
 export class Helper {
@@ -15,10 +15,12 @@ export class Helper {
     private _ticketRights: ITicketRights
     private _followupRights: IFollowupRights
     private _taskRights: Partial<ITaskRights>
+    private _validateRights: IAgreementRights
     private _maxRightsLength: Record<Exclude<RightsType, RightsType.STATUS>, Record<InterfaceType, number>> = {
         [RightsType.TICKET]: { central: 18, helpdesk: 12 },
         [RightsType.FOLLOWUP]: { central: 13, helpdesk: 11 },
         [RightsType.TASK]: { central: 13, helpdesk: 1 },
+        [RightsType.AGREEMENT]: { central: 14, helpdesk: 1 },
     }
 
     private _ticketStatusesRights: ITicketStatusesRights
@@ -33,6 +35,7 @@ export class Helper {
         this._ticketRights = await this._ParseRights(RightsType.TICKET, activeProfile.ticket) as ITicketRights
         this._followupRights = await this._ParseRights(RightsType.FOLLOWUP, activeProfile.followup) as IFollowupRights
         this._taskRights = await this._ParseRights(RightsType.TASK, activeProfile.task) as ITaskRights
+        this._validateRights = await this._ParseRights(RightsType.AGREEMENT, activeProfile.ticketvalidation) as IAgreementRights
         this._ticketStatusesRights = await this._ParseStatuses()
     }
 
@@ -59,7 +62,7 @@ export class Helper {
                     } as ITicketRights
                 } else {
                     return {
-                        canAcceptOrDenySolve: false,
+                        canAcceptOrDenySolve: true,
                         canChangePriority: false,
                         canTakeTicket: false,
                         canTakeAnyTicket: false,
@@ -116,6 +119,25 @@ export class Helper {
                         canViewPublicTasks: byteMask[0] === '1',
                     } as ITaskRights
                 }
+            case RightsType.AGREEMENT:
+                if (this._interface === 'central') {
+                    return {
+                        canDeleteAgreement: byteMask[9] === '1',
+                        canCreateRequestAgreement: byteMask[3] === '1',
+                        canCreateIncidentAgreement: byteMask[2] === '1',
+                        canAnswerRequestAgreement: byteMask[1] === '1',
+                        canAnswerIncidentAgreement: byteMask[0] === '1',
+                    } as IAgreementRights
+                } else {
+                    return {
+
+                        canDeleteAgreement: false,
+                        canCreateRequestAgreement: false,
+                        canCreateIncidentAgreement: false,
+                        canAnswerRequestAgreement: false,
+                        canAnswerIncidentAgreement: false,
+                    } as IAgreementRights
+                }
         }
     }
 
@@ -123,7 +145,7 @@ export class Helper {
         const statuses = this.sessionInfo.glpiactiveprofile.ticket_status
         let parsedStatuses: ITicketStatusesRights
 
-        if (Array.isArray(statuses) && statuses.length === 0) {
+        if (statuses === null || (Array.isArray(statuses) && statuses.length === 0)) {
             this._interface === 'central'
                 ? parsedStatuses = {
                     [TicketStatuses.NEW]: {
@@ -343,6 +365,7 @@ export class Helper {
             [RightsType.FOLLOWUP]: this._followupRights,
             [RightsType.TASK]: this._taskRights,
             [RightsType.STATUS]: this._ticketStatusesRights,
+            'agreement': this._validateRights,
         }
     }
 }

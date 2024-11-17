@@ -77,6 +77,7 @@ async function start() {
     app.enableCors({
         credentials: true,
         origin: corsOptionsDelegate,
+        exposedHeaders: 'Suspend-Reauth'
     })
     //endregion
 

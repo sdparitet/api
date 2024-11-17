@@ -6,7 +6,6 @@ import { Response } from "express"
 import { GLPI_DB_CONNECTION } from '~root/src/constants'
 import {
     TicketChatResponse,
-    TicketInfoResponse,
     TicketMembersResponse,
     RequestTicketIdAndUsernameDto,
     RequestTicketIdDto,
@@ -16,14 +15,27 @@ import {
     TicketsMembersResponse,
     UserTicketsResponse,
     GlpiUsersInGroupsResponse,
-    UploadTicketDocumentResponse, RequestTicketIdAndUsernameAndStateDto, DeleteUserFromTicketRequest,
+    UploadTicketDocumentResponse,
+    RequestTicketIdAndUsernameAndStateDto,
+    DeleteUserFromTicketRequest,
+    GetSolutionRequest,
+    GetSolutionResponse,
+    GetTaskResponse,
+    SetTaskStateRequest,
+    CreateSolutionRequest,
+    SolutionAnswerRequest,
+    ChangeTicketStatusRequest,
+    CreateTaskRequest,
+    GetTicketsMembersRequest, SetAgreementStatusRequest, GetAgreementInfoResponse, CreateAgreementRequest,
 } from '~glpi/dto/post-request-dto'
-import { GetImagePreviewParams } from "~glpi/dto/get-request-dto"
+import { GetAgreementUserParams, GetImagePreviewParams } from "~glpi/dto/get-request-dto"
 import { GLPI } from "~root/src/connectors/glpi/glpi-api.connector"
 import { CACHE_MANAGER } from "@nestjs/cache-manager"
 import { Cache } from "cache-manager"
 import { Sharp } from "sharp"
-import { PayloadType } from '~connectors/glpi/types'
+import * as sharp from 'sharp'
+import * as mime from 'mime-types'
+import { ISearch, PayloadType } from '~connectors/glpi/types'
 
 @Injectable()
 export class GLPI_Service {
@@ -36,24 +48,26 @@ export class GLPI_Service {
     //region [ Wrappers ]
     async RequestWrapper(res: Response, func: () => void) {
         try {
+            res.setHeader('Suspend-Reauth', 'true')
             func()
         } catch (err: any) {
             return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send(err)
         }
     }
 
-    async GlpiApiWrapper(username: string, dataSource: DataSource, res: Response, func: (glpi: GLPI) => void) {
-        const glpi = await new GLPI(username, dataSource)
+    async GlpiApiWrapper(username: string, res: Response, func: (glpi: GLPI) => void) {
+        const glpi = new GLPI(username, this.cacheService, this.glpi)
+        await glpi.InitSession()
+
+        res.setHeader('Suspend-Reauth', 'true')
         if (glpi.authorized) {
             try {
                 func(glpi)
             } catch (err: any) {
                 return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send(err)
-            } finally {
-                // await glpi.kill_session()
             }
         } else {
-            return res.status(HttpStatus.BAD_REQUEST).json({ status: 'error', message: 'Could not log in to GLPI' })
+            return res.status(HttpStatus.UNAUTHORIZED).json({ status: 'error', message: 'Could not login in GLPI' })
         }
     }
 
@@ -61,56 +75,83 @@ export class GLPI_Service {
 
     //region [ Ticket list ]
     async GetUserTickets(dto: RequestUsernameDto, res: Response) {
-        await this.RequestWrapper(res, async () => {
-            const ret: UserTicketsResponse[] = await this.glpi.query(`
-                SELECT t.id
+        await this.GlpiApiWrapper(dto.username, res, async (glpi: GLPI) => {
+            const ret = await this.glpi.query(`
+                select t.id
                      , t.type
                      , t.name
                      , t.status
-                     , i.completename as category
+                     , c.completename as category
                      , t.date_creation
                      , t.time_to_resolve
-                FROM glpi_tickets t
-                         LEFT JOIN glpi_itilcategories i ON t.itilcategories_id = i.id
-                WHERE t.is_deleted = 0
-                  AND t.id in (SELECT tu.tickets_id
-                               FROM glpi_tickets_users tu
-                               WHERE tu.type = 1
-                                 AND tu.users_id in (SELECT id FROM glpi_users u WHERE u.name = '${dto.username || ''}'));`)
+                from glpi_tickets t
+                         left join glpi_itilcategories c
+                                   on t.itilcategories_id = c.id
+                         left join glpi_tickets_users u
+                                   on t.id = u.tickets_id
+                where t.is_deleted = 0
+                  and u.type = 1
+                  and u.users_id = ${glpi.userId};`)
+
             if (ret) res.status(HttpStatus.OK).json(ret)
-            else res.status(HttpStatus.BAD_REQUEST).json([])
+            else res.status(HttpStatus.INTERNAL_SERVER_ERROR).json([])
         })
     }
 
-    async GetTicketsMembers(dto: RequestUsernameDto, res: Response) {
-        await this.RequestWrapper(res, async () => {
-            const ret: TicketsMembersResponse[] = await this.glpi.query(`
-                select *
-                from (select t.id                                 as ticket_id
-                           , u.id
-                           , CONCAT(u.realname, ' ', u.firstname) as name
-                           , 1                                    as memberType
-                           , tu.type                              as accessoryType
-                      from glpi_tickets t
-                               inner join glpi_tickets_users tu on t.id = tu.tickets_id
-                               left join glpi_users u on tu.users_id = u.id
-                      union
-                      select t.id    as ticket_id
-                           , g.id
-                           , g.name
-                           , 2       as memberType
-                           , tg.type as accessoryType
-                      from glpi_tickets t
-                               inner join glpi_groups_tickets tg on t.id = tg.tickets_id
-                               left join glpi_groups g on tg.groups_id = g.id) as data
-                where data.ticket_id in (select tu2.tickets_id
-                                         from glpi_tickets_users tu2
-                                         where tu2.type = 1
-                                           and tu2.users_id in (select u2.id
-                                                                from glpi_users u2
-                                                                where u2.name = '${dto.username}'));`)
+    async GetUserAssignTickets(dto: RequestUsernameDto, res: Response) {
+        await this.GlpiApiWrapper(dto.username, res, async (glpi: GLPI) => {
+            const ret = await this.glpi.query(`
+                select t.id
+                     , t.type
+                     , t.name
+                     , t.status
+                     , c.completename as category
+                     , t.date_creation
+                     , t.time_to_resolve
+                from glpi_tickets t
+                         left join glpi_itilcategories c
+                                   on t.itilcategories_id = c.id
+                         left join glpi_tickets_users u
+                                   on t.id = u.tickets_id
+                where t.is_deleted = 0
+                  and u.type = 2
+                  and u.users_id = ${glpi.userId};`)
+
             if (ret) res.status(HttpStatus.OK).json(ret)
-            else res.status(HttpStatus.BAD_REQUEST).json([])
+            else res.status(HttpStatus.BAD_REQUEST)
+        })
+    }
+
+    async GetTicketsMembers(dto: GetTicketsMembersRequest, res: Response) {
+        await this.RequestWrapper(res, async () => {
+            if (dto.tickets && dto.tickets.length > 0) {
+                const ret: TicketsMembersResponse[] = await this.glpi.query(`
+                    select *
+                    from (select t.id                                 as ticket_id
+                               , u.id
+                               , CONCAT(u.realname, ' ', u.firstname) as name
+                               , 1                                    as memberType
+                               , tu.type                              as accessoryType
+                          from glpi_tickets t
+                                   inner join glpi_tickets_users tu on t.id = tu.tickets_id
+                                   left join glpi_users u on tu.users_id = u.id
+                          union
+                          select t.id    as ticket_id
+                               , g.id
+                               , g.name
+                               , 2       as memberType
+                               , tg.type as accessoryType
+                          from glpi_tickets t
+                                   inner join glpi_groups_tickets tg on t.id = tg.tickets_id
+                                   left join glpi_groups g on tg.groups_id = g.id) as data
+                    where data.ticket_id in (${dto.tickets.join(',')})`)
+
+
+                if (ret) res.status(HttpStatus.OK).json(ret)
+                else res.status(HttpStatus.BAD_REQUEST).json([])
+            } else {
+                res.status(HttpStatus.OK).json([])
+            }
         })
     }
 
@@ -118,10 +159,8 @@ export class GLPI_Service {
 
     //region [ Ticket info ]
     async GetUserAccess({ username }, res: Response) {
-        console.log(username)
-        await this.GlpiApiWrapper(username, this.glpi, res, async (glpi) => {
-            let ret = await glpi.GetUserRights()
-
+        await this.GlpiApiWrapper(username, res, async (glpi) => {
+            const ret = await glpi.GetUserRights()
             res.status(HttpStatus.OK).json(ret)
         })
     }
@@ -141,24 +180,68 @@ export class GLPI_Service {
     }
 
     async GetTicketInfo(dto: RequestTicketIdAndUsernameDto, res: Response) {
-        await this.RequestWrapper(res, async () => {
-            const ret: TicketInfoResponse[] = await this.glpi.query(`
-                select t.id
-                     , t.name
-                     , t.status
-                     , t.type
-                     , c.completename as category
-                     , t.date_creation
-                     , t.time_to_resolve
-                     , t.solvedate
-                     , t.closedate
-                from glpi_tickets t
-                         left join glpi_itilcategories c on t.itilcategories_id = c.id
-                where t.id = ${dto.id};`)
+        await this.GlpiApiWrapper(dto.username, res, async (glpi) => {
+            const ret = await glpi.GetItem('Ticket', dto.id, { expand_dropdowns: true, get_hateoas: false })
+            if (ret.status >= 400) {
+                res.status(ret.status).json(ret.data)
+            } else {
 
-            if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret[0])
-            else res.status(HttpStatus.BAD_REQUEST).json([])
+                const {
+                    id,
+                    name,
+                    status,
+                    type,
+                    itilcategories_id: escapedCategory,
+                    date_creation,
+                    time_to_resolve,
+                    solvedate,
+                    closedate,
+                } = ret.data
+
+                let category: number | string | null
+                try {
+                    category = escapedCategory.replaceAll('&gt;', '>')
+                } catch (e) {
+                    if (escapedCategory === 0) {
+                        category = null
+                    } else {
+                        category = escapedCategory
+                    }
+                }
+
+                res.status(ret.status).json({
+                    id,
+                    name,
+                    status,
+                    type,
+                    category,
+                    date_creation,
+                    time_to_resolve,
+                    solvedate,
+                    closedate,
+                })
+
+            }
         })
+
+        // await this.RequestWrapper(res, async () => {
+        //     const ret: TicketInfoResponse[] = await this.glpi.query(`
+        //         select t.id
+        //              , t.name
+        //              , t.status
+        //              , t.type
+        //              , c.completename as category
+        //              , t.date_creation
+        //              , t.time_to_resolve
+        //              , t.solvedate
+        //              , t.closedate
+        //         from glpi_tickets t
+        //                  left join glpi_itilcategories c on t.itilcategories_id = c.id
+        //         where t.id = ${dto.id};`)
+        //
+        //     if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret[0])
+        //     else res.status(HttpStatus.BAD_REQUEST).json([])
+        // })
     }
 
     async GetTicketMembers(dto: RequestTicketIdDto, res: Response) {
@@ -223,6 +306,7 @@ export class GLPI_Service {
                 union
                 select u.id                                 as userId
                      , CONCAT(u.realname, ' ', u.firstname) as name
+--                     , 1                                    as sideLeft
                      , if(u.name = '${dto.username}', 0, 1) as sideLeft
                      , s.id                                 as id
                      , 'Solution'                           as type
@@ -245,6 +329,30 @@ export class GLPI_Service {
                      , t.date_creation as time
                 from glpi_tickets t
                 where id = ${dto.id}
+                union
+                select ts.users_id                          as userId
+                     , CONCAT(u.realname, ' ', u.firstname) as name
+                     , if(u.name = '${dto.username}', 0, 1) as sideLeft
+                     , ts.id                                as id
+                     , 'Task'                               as type
+                     , ts.content                           as text
+                     , ts.date_creation as time
+                from glpi_tickettasks ts
+                    left join glpi_users u
+                on ts.users_id = u.id
+                where ts.tickets_id = ${dto.id}
+                union
+                select tv.users_id                          as userId
+                     , CONCAT(u.realname, ' ', u.firstname) as name
+                     , if(u.name = '${dto.username}', 0, 1) as sideLeft
+                     , tv.id                                as id
+                     , 'Agreement'                          as type
+                     , tv.comment_submission                as text
+                     , tv.submission_date as time
+                from glpi_ticketvalidations tv
+                    left join glpi_users u
+                on tv.users_id = u.id
+                where tv.tickets_id = ${dto.id}
                 order by time;`)
 
             if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret)
@@ -252,8 +360,244 @@ export class GLPI_Service {
         })
     }
 
+    async GetSolutionTemplates(res: Response) {
+        await this.GlpiApiWrapper('portal_reader', res, async (glpi) => {
+            const ret = await glpi.GetAllItems('SolutionTemplate')
+
+            const prepareData = (data: any) => {
+                if (data instanceof Array) {
+                    return data.map((item: any) => ({
+                        id: item.id,
+                        name: item.name,
+                        content: item.content,
+                    }))
+                } else return data
+            }
+
+            res.status(ret.status).json(prepareData(ret.data))
+        })
+    }
+
+    async GetUsers(res: Response) {
+        await this.GlpiApiWrapper('portal_reader', res, async (glpi) => {
+            const ret = await glpi.GetAllItems('User')
+            const prepareData = ret.data.map((item: any) => ({
+                id: item.id,
+                label: [item.realname, item.firstname].filter(item => item !== null).join(' '),
+            }))
+
+            const filteredData = prepareData.filter((item: any) => {
+                return item.label !== '' && item.label !== ' ' && ![364, 365, 328, 443, 348, 327, 374, 357, 442, 441, 380].includes(item.id)
+            })
+
+            const finalData = filteredData.sort((a: any, b: any) => a.label.localeCompare(b.label))
+
+            res.status(ret.status).json(finalData)
+        })
+    }
+
+    async GetGroups(res: Response) {
+        await this.GlpiApiWrapper('portal_reader', res, async (glpi) => {
+            const ret = await glpi.GetAllItems('Group')
+            const prepareData = (data: any) => {
+                return data.map((item: any) => ({
+                    id: item.id,
+                    label: item.completename,
+                }))
+            }
+            res.status(ret.status).json(prepareData(ret.data))
+        })
+    }
+
+    async GetSolutionInfo(dto: GetSolutionRequest, res: Response) {
+        await this.RequestWrapper(res, async () => {
+            const ret: GetSolutionResponse[] = await this.glpi.query(`
+                select date_approval     as dateApproval,
+                       users_id_approval as userIdApproval,
+                       status
+                from glpi_itilsolutions
+                where id = ${dto.solutionId}`)
+
+            if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret[0])
+            else res.status(HttpStatus.BAD_REQUEST).json([])
+        })
+    }
+
+    async CreateSolution(dto: CreateSolutionRequest, res: Response) {
+        await this.GlpiApiWrapper(dto.username, res, async (glpi) => {
+            const payload: PayloadType = {
+                itemtype: 'Ticket',
+                items_id: dto.id,
+                content: dto.content,
+            }
+            const ret = await glpi.AddItems('ITILSolution', payload)
+            res.status(ret.status).json({ ...ret.data, userId: glpi.userId, userFio: glpi.userFio })
+        })
+    }
+
+    async SetSolutionAnswer(dto: SolutionAnswerRequest, res: Response) {
+        await this.GlpiApiWrapper(dto.username, res, async (glpi) => {
+            const payload: PayloadType = {
+                id: dto.id,
+                status: dto.status,
+            }
+
+            const ret = await glpi.UpdateItem('ITILSolution', payload)
+
+            const targetTicketStatusBySolveAnswerStatus = {
+                1: 6,
+                2: 5,
+                3: 6,
+                4: 1
+            }
+            await glpi.UpdateItem('Ticket', {
+                id: dto.ticket_id,
+                status: targetTicketStatusBySolveAnswerStatus[dto.status]
+            })
+            if (ret.data && ret.data.length > 0) res.status(ret.status).json({ ...ret.data[0], status: dto.status })
+            else res.status(HttpStatus.INTERNAL_SERVER_ERROR).json([])
+        })
+    }
+
+    async GetTaskInfo(dto: RequestTicketIdDto, res: Response) {
+        await this.RequestWrapper(res, async () => {
+            const ret: GetTaskResponse[] = await this.glpi.query(`
+                select is_private                           as isPrivate
+                     , actiontime                           as actionTime
+                     , state
+                     , users_id_tech                        as userIdTech
+                     , CONCAT(u.realname, ' ', u.firstname) as userTech
+                     , groups_id_tech                       as groupIdTech
+                     , g.name                               as groupTech
+                from glpi_tickettasks t
+                         left join glpi_users u
+                                   on t.users_id_tech = u.id
+                         left join glpi_groups g
+                                   on t.groups_id_tech = g.id
+                where t.id = ${dto.id}`)
+
+
+            if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret[0])
+            else res.status(HttpStatus.BAD_REQUEST).json([])
+        })
+    }
+
+    async SetTaskState(dto: SetTaskStateRequest, res: Response) {
+        await this.GlpiApiWrapper('portal_reader', res, async (glpi) => {
+            const payload: PayloadType = {
+                id: dto.id,
+                state: dto.state,
+            }
+            const { status, data } = await glpi.UpdateItem('TicketTask', payload)
+            res.status(status).json(data)
+        })
+    }
+
+    async ChangeTicketStatus(dto: ChangeTicketStatusRequest, res: Response) {
+        await this.GlpiApiWrapper(dto.username, res, async (glpi) => {
+            const payload: PayloadType = {
+                id: dto.ticketId,
+                status: dto.status,
+            }
+
+            const ret = await glpi.UpdateItem('Ticket', payload)
+            res.status(ret.status).json(ret.data)
+        })
+    }
+
+    async CreateTask(dto: CreateTaskRequest, res: Response) {
+        await this.GlpiApiWrapper(dto.username, res, async (glpi) => {
+            const payload: PayloadType = {
+                tickets_id: dto.id,
+                users_id: glpi.userId,
+                users_id_tech: dto.userId,
+                groups_id_tech: dto.groupId,
+                content: dto.content,
+                is_private: dto.isPrivate,
+                state: dto.state
+            }
+
+            const ret = await glpi.AddItems('TicketTask', payload)
+            res.status(ret.status).json({ ...ret.data, userId: glpi.userId, userFio: glpi.userFio })
+        })
+    }
+
+    async GetAgreementInfo(dto: RequestTicketIdDto, res: Response) {
+        await this.RequestWrapper(res, async () => {
+            const ret: GetAgreementInfoResponse[] = await this.glpi.query(`
+                select v.users_id_validate                  as validatorId
+                     , CONCAT(u.realname, ' ', u.firstname) as validator
+                     , v.comment_validation                 as validationComment
+                     , v.status
+                     , v.validation_date                    as validationDate
+                from glpi_ticketvalidations v
+                         left join glpi_users u
+                                   on v.users_id_validate = u.id
+                where v.id = ${dto.id};`)
+
+            if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret[0])
+            else res.status(HttpStatus.BAD_REQUEST).json([])
+        })
+    }
+
+    async GetAgreementUser(params: GetAgreementUserParams, res: Response) {
+        const incidentRights = [8192,8208,9216,9232,10240,10256,11264,11280,12288,12304,13312,13328,14336,14352,15360,15376]
+        const requestRights = [4096,4112,5120,5136,6144,6160,7168,7184,12288,12304,13312,13328,14336,14352,15360,15376]
+        await this.RequestWrapper(res, async () => {
+            const ret = await this.glpi.query(`
+
+                select *
+                from (select u.id
+                           , CONCAT(u.realname, ' ', u.firstname) as label
+                      from glpi_users u
+                      where is_deleted = 0
+                        and id in (select unique users_id
+                                   from glpi_profiles_users
+                                   where profiles_id in (select profiles_id
+                                                         from glpi_profilerights
+                                                         where name = 'ticketvalidation'
+                                                           and rights in
+                                                               (${params.ticketType === 1
+                                                                   ? incidentRights.join(', ')
+                                                                   : requestRights.join(', ')})))) as dat
+                where id not in (364, 365, 328, 443, 348, 327, 374, 357, 442, 441, 380)
+                  and label is not null;`)
+
+            if (ret) res.status(HttpStatus.OK).json(ret)
+            else res.status(HttpStatus.BAD_REQUEST).json([])
+        })
+    }
+
+    async SetAgreementStatus(dto: SetAgreementStatusRequest, res: Response) {
+        await this.GlpiApiWrapper(dto.username, res, async (glpi) => {
+            const payload: PayloadType = {
+                id: dto.id,
+                status: dto.status,
+                comment_validation: dto.comment
+            }
+
+            const { status, data } = await glpi.UpdateItem('TicketValidation', payload)
+            res.status(status).json(data)
+        })
+    }
+
+
+    async CreateAgreement(dto: CreateAgreementRequest, res: Response) {
+        await this.GlpiApiWrapper(dto.username, res, async (glpi) => {
+            const payload: PayloadType = {
+                tickets_id: dto.id,
+                users_id_validate: dto.userId,
+                comment_submission: dto.content,
+            }
+
+            const ret = await glpi.AddItems('TicketValidation', payload)
+            res.status(ret.status).json({ ...ret.data, userId: glpi.userId, userFio: glpi.userFio })
+        })
+    }
+
+
     async DeleteUserFromTicket(dto: DeleteUserFromTicketRequest, res: Response) {
-        await this.GlpiApiWrapper('portal_reader', this.glpi, res, async (glpi) => {
+        await this.GlpiApiWrapper('portal_reader', res, async (glpi) => {
             const ret = await this.glpi.query(`
                 select id
                 from glpi_tickets_users
@@ -271,8 +615,8 @@ export class GLPI_Service {
     }
 
     async GetUserInfoByUsername(params: RequestUsernameDto, res: Response) {
-        await this.GlpiApiWrapper(params.username, this.glpi, res, async (glpi) => {
-            const data =  {
+        await this.GlpiApiWrapper(params.username, res, (glpi) => {
+            const data = {
                 id: glpi.sessionInfo.session.glpiID,
                 name: glpi.sessionInfo.session.glpifriendlyname,
             }
@@ -283,16 +627,14 @@ export class GLPI_Service {
     }
 
     async AddUsersInTicket(dto: DeleteUserFromTicketRequest[], res: Response) {
-        await this.GlpiApiWrapper('portal_reader', this.glpi, res, async (glpi) => {
+        await this.GlpiApiWrapper('portal_reader', res, async (glpi) => {
             const payload: PayloadType[] = dto.map(user => ({
                 tickets_id: user.ticket_id,
                 users_id: user.user_id,
                 type: user.accessoryType,
             }))
 
-            console.log(payload)
-
-            const {status, data} = await glpi.AddItems('Ticket_User', payload)
+            const { status, data } = await glpi.AddItems('Ticket_User', payload)
 
             res.status(status).json(data)
         })
@@ -327,20 +669,20 @@ export class GLPI_Service {
 
     //region [ GLPI API ]
     async CreateTicketFollowup(dto: TicketFollowupDto, res: Response) {
-        await this.GlpiApiWrapper(dto.username, this.glpi, res, async (glpi) => {
+        await this.GlpiApiWrapper(dto.username, res, async (glpi) => {
             const ret = await glpi.CreateFollowup(dto.ticket_id, dto.text)
 
             res.status(ret.status).json({
                 id: ret.data.id,
                 message: ret.data.message,
                 userId: glpi.userId,
-                userFIO: glpi.userFIO
+                userFio: glpi.userFio
             })
         })
     }
 
     async SwitchTicketNotifications(dto: RequestTicketIdAndUsernameAndStateDto, res: Response) {
-        await this.GlpiApiWrapper(dto.username, this.glpi, res, async (glpi) => {
+        await this.GlpiApiWrapper(dto.username, res, async (glpi) => {
             const ret = await glpi.SwitchTicketNotification(dto.id, dto.state)
 
             if (ret) res.status(ret.status).json(ret.data)
@@ -349,10 +691,25 @@ export class GLPI_Service {
     }
 
     async UploadTicketDocument(files: Express.Multer.File[], dto: RequestTicketIdAndUsernameDto, res: Response) {
-        if (files) {
-            await this.GlpiApiWrapper('portal_reader', this.glpi, res, async (glpi) => {
-                const ret: UploadTicketDocumentResponse = await glpi.UploadTicketDocument(files, dto.id, dto.username)
-                res.status(ret.status).json(ret)
+        if (files && files.length > 0) {
+            const processedFiles = await Promise.all(
+                files.map(async (file) => {
+                    const mimeType = mime.lookup(file.originalname)
+
+                    if (mimeType && mimeType.startsWith('image/')) {
+                        const rotatedBuffer = await sharp(file.buffer)
+                            .rotate()
+                            .toBuffer()
+                        return { ...file, buffer: rotatedBuffer }
+                    } else {
+                        return file
+                    }
+                })
+            )
+
+            await this.GlpiApiWrapper('portal_reader', res, async (glpi) => {
+                const ret: UploadTicketDocumentResponse = await glpi.UploadTicketDocument(processedFiles, dto.id, dto.username)
+                res.status(ret.status).json({ id: ret.data[0].id, userId: glpi.userId, userFio: glpi.userFio })
             })
         } else {
             res.status(HttpStatus.BAD_REQUEST).json({ status: 'error', message: 'File not provided' })
@@ -368,7 +725,7 @@ export class GLPI_Service {
         if (_ret) {
             filename = _ret[0].filename
         }
-        await this.GlpiApiWrapper(dto.username, this.glpi, res, async (glpi) => {
+        await this.GlpiApiWrapper(dto.username, res, async (glpi) => {
             const ret = await glpi.DownloadDocument(dto.id)
 
             res.set('Content-Disposition', `attachment; filename=${encodeURIComponent(filename)}`)
@@ -419,7 +776,7 @@ export class GLPI_Service {
             if (_ret) {
                 filename = _ret[0].filename
             }
-            await this.GlpiApiWrapper(params.username, this.glpi, res, async (glpi) => {
+            await this.GlpiApiWrapper(params.username, res, async (glpi) => {
                 const ret = await glpi.DownloadDocument(params.id)
                 if (ret.status === HttpStatus.OK) {
                     if (ret.mime.split('/').length > 0 && ret.mime.split('/')[0] === 'image') {
@@ -501,10 +858,9 @@ export class GLPI_Service {
 
     // ToDo ctd
     async Test(res: Response, params: any) {
-        await this.GlpiApiWrapper('portal_reader', this.glpi, res, async (glpi) => {
-            let ret = await glpi.GetUserRights(params.user)
+        await this.GlpiApiWrapper('portal_reader', res, async (glpi) => {
 
-            res.status(HttpStatus.OK).json(ret)
+            res.status(HttpStatus.UNAUTHORIZED).json([])
         })
     }
 

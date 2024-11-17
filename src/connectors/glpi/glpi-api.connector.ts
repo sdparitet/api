@@ -1,112 +1,132 @@
-import { AxiosResponse } from "axios"
-import { InjectDataSource } from "@nestjs/typeorm"
-import { GLPI_DB_CONNECTION } from "~root/src/constants"
+import axios, { AxiosInstance, AxiosResponse } from "axios"
 import { DataSource } from "typeorm"
 import {
-    ISearch,
-    GlpiApiResponse,
-    PayloadType,
     CriteriaType,
+    GlpiApiInitResponse,
+    GlpiApiResponse,
     IGlpiSession,
-    GlpiApiInitResponse
+    ISearch,
+    PayloadType
 } from "~connectors/glpi/types"
 import { HttpStatus } from "@nestjs/common"
 import * as http from "node:http"
 import * as https from "node:https"
 import { Helper } from '~connectors/glpi/helper'
+import { Cache } from 'cache-manager'
 
 
 export class GLPI {
-    private session = require('axios')
-
+    private session: AxiosInstance
     private readonly _baseUrl = process.env.GLPI_API_URL || 'https://sd.paritet.su/apirest.php/'
     private readonly _appToken = process.env.GLPI_API_TOKEN || ''
-    private _username: string
+    private readonly _username: string
     private _userToken: string
     sessionInfo: IGlpiSession
     userId: number
-    userFIO: string
+    userFio: string
     sessionToken: string
     authorized: boolean = false
 
-    constructor(username: string, @InjectDataSource(GLPI_DB_CONNECTION) private readonly glpi: DataSource) {
-        return (async (): Promise<GLPI> => {
-            this._username = username
+    constructor(username: string, private readonly redis: Cache, private readonly glpi: DataSource) {
+        this._username = username
+        this.session = this._InitAxios()
+    }
 
-            this.session.defaults.validateStatus = (status: number) => status >= 200 && status < 500
-            this.session.defaults.httpAgent = new http.Agent({ keepAlive: true })
-            this.session.defaults.httpsAgent = new https.Agent({ keepAlive: true })
-            this.session.defaults.timeout = 10000
-            this.session.defaults.baseURL = this._baseUrl
-            this.session.defaults.headers.common = {
+    private _InitAxios(): AxiosInstance {
+        return axios.create({
+            baseURL: this._baseUrl,
+            timeout: 10000,
+            httpAgent: new http.Agent({ keepAlive: true }),
+            httpsAgent: new https.Agent({ keepAlive: true }),
+            headers: {
                 'User-Agent': 'Mozilla/5.0',
                 'Content-Type': 'application/json',
                 'App-Token': this._appToken,
-            }
+            },
+            validateStatus: (status: number) => status >= 200 && status < 500
+        })
+    }
 
+    private async _GetStoredSession(): Promise<boolean> {
+        const storedSession: IGlpiSession = await this.redis.get(`session_${this._username}`)
+        if (storedSession) {
+            const { status } = await this._HandleRequest(this.session.get(`getActiveEntities`))
+            if (status === HttpStatus.OK) {
+                this.sessionInfo = storedSession
+                this.authorized = true
+                this.userId = storedSession.session.glpiID
+                this.userFio = storedSession.session.glpifriendlyname
+                this.sessionToken = storedSession.session_token
+                this.session.defaults.headers.common['Session-Token'] = this.sessionToken
+
+                return true
+            } else {
+                return false
+            }
+        } else {
+            return false
+        }
+    }
+
+    async InitSession(): Promise<void> {
+        const isSessionExists = await this._GetStoredSession()
+
+        if (!isSessionExists) {
             this._userToken = await this._GetUserToken()
 
             if (this._userToken) {
-                const res = await this._InitSession()
+                const { status, data } = await this._Login(this._userToken)
 
-                if (res.status === HttpStatus.OK) {
-                    this.sessionInfo = res.data
+                if (status === HttpStatus.OK) {
+                    this.sessionInfo = data
                     this.authorized = true
-                    this.userId = res.data.session.glpiID
-                    this.userFIO = res.data.session.glpifriendlyname
-                    this.sessionToken = res.data.session_token
+                    this.userId = data.session.glpiID
+                    this.userFio = data.session.glpifriendlyname
+                    this.sessionToken = data.session_token
                     this.session.defaults.headers.common['Session-Token'] = this.sessionToken
+
+                    await this.redis.set(`session_${this._username}`, this.sessionInfo, 86400)
                 }
             }
-
-            return this
-        })() as unknown as GLPI
+        }
     }
 
-    private async _GetUserToken(asUser: string = this._username) {
-        const ret: { api_token: string }[] = await this.glpi.query(`
+    private async _Login(token: string): Promise<GlpiApiInitResponse> {
+        try {
+            const { status, data } = await this.session.get('initSession', {
+                headers: { 'Authorization': `user_token ${token}` },
+                params: { get_full_session: true }
+            })
+
+            return { status, data }
+
+        } catch (error) {
+            return { status: HttpStatus.INTERNAL_SERVER_ERROR, data: error }
+        }
+    }
+
+    private async _GetUserToken(asUser: string = this._username): Promise<string | null> {
+        const [ret] = await this.glpi.query(`
             select api_token
             from glpi_users
             where name = '${asUser}'`)
 
-        return ret && ret.length > 0 ? ret[0].api_token !== null ? ret[0].api_token : await this._SetUserToken(asUser) : null
+        return ret?.api_token ?? await this._SetUserToken(asUser)
     }
 
-    private async _GenerateUserToken() {
-        const length = 40
-        const charset = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
-        let token = ''
-
-        for (let i = 0; i < length; i++) {
-            token += charset[Math.floor(Math.random() * charset.length)]
-        }
-
-        return token
-    }
-
-    private async _SetUserToken(asUser: string = this._username) {
-        const token = await this._GenerateUserToken()
-
+    private async _SetUserToken(asUser: string): Promise<string> {
+        const token = this._GenerateUserToken()
         await this.glpi.query(`
             update glpi_users
             set api_token = '${token}'
-            where name = '${asUser}'`
-        )
-
+            where name = '${asUser}'`)
         return token
     }
 
-    private async _InitSession(token: string = this._userToken): Promise<GlpiApiInitResponse> {
-        const auth_header = {
-            'Authorization': 'user_token ' + token
-        }
-
-        const { status, data } = await this.session.get('initSession', {
-            headers: auth_header,
-            params: { get_full_session: true }
-        })
-
-        return { status, data } as GlpiApiInitResponse
+    private _GenerateUserToken() {
+        const length = 40
+        const charset = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
+        return Array.from({ length }, () => charset[Math.floor(Math.random() * charset.length)]).join('')
     }
 
     async KillSession() {
@@ -116,11 +136,9 @@ export class GLPI {
     async GetUserRights(asUser: string = this._username, sessionInfo: IGlpiSession = this.sessionInfo) {
         if (asUser !== this._username) {
             const token = await this._GetUserToken(asUser)
-
             if (token) {
-                const { status, data } = await this._InitSession(token)
+                const { status, data } = await this._Login(token)
                 if (status === HttpStatus.OK) {
-                    console.log(data)
                     sessionInfo = data
                 } else {
                     return null
@@ -129,68 +147,59 @@ export class GLPI {
                 return null
             }
         }
-
         const helper = new Helper(sessionInfo)
-        return await helper.getRights()
+        return { glpiId: this.userId, ...await helper.getRights() }
     }
 
-    async GetItem(itemType: string, itemId: number, retries: number = 3): GlpiApiResponse {
+    private async _HandleRequest<T>(request: Promise<AxiosResponse<T>>, retries: number = 3): Promise<GlpiApiResponse> {
         try {
-            const { status, data } = await this.session.get(`${itemType}/${itemId}`)
-            return { status: status === HttpStatus.UNAUTHORIZED ? HttpStatus.BAD_REQUEST : status, data: data }
-        } catch (err: any) {
-            console.log(err)
+            const { status, data } = await request
+
+            return { status, data }
+        } catch (err) {
             if (retries > 0) {
-                return await this.GetItem(itemType, itemId, retries - 1)
-            } else return { status: HttpStatus.INTERNAL_SERVER_ERROR, data: err }
+                return this._HandleRequest(request, retries - 1)
+            } else {
+                return { status: HttpStatus.INTERNAL_SERVER_ERROR, data: err }
+            }
         }
     }
 
-    async GetAllItems(itemType: string): GlpiApiResponse {
-        console.log(itemType)
+    async GetItem(itemType: string, itemId: number, params: PayloadType = {}): Promise<GlpiApiResponse> {
+        return this._HandleRequest(this.session.get(`${itemType}/${itemId}`, { params: params }))
+    }
+
+    async GetAllItems(itemType: string, params: PayloadType = {}): Promise<GlpiApiResponse> {
         const allData = []
         let left = 0
         const step = 200
 
-        do {
+        while (true) {
             const right = left + step - 1
             const { status, data, headers } = await this.session.get(itemType, {
-                params: { 'range': `${left}-${right}` }
+                params: { ...params, 'range': `${left}-${right}` }
             })
 
             if (status === HttpStatus.UNAUTHORIZED) {
-                return { status: HttpStatus.BAD_REQUEST, data: data }
+                return { status, data }
             }
 
             allData.push(...data)
 
             if (status === 206) {
-                const contentRange = headers['content-range']
-                const [range, total] = contentRange.split('/')
+                const [range, total] = headers['content-range'].split('/')
                 const [, end] = range.split('-')
-
                 left = parseInt(end) + 1
-
-                if (left >= total) {
-                    break
-                }
-            } else {
-                break
-            }
-        } while (true)
+                if (left >= total) break
+            } else break
+        }
 
         return { status: HttpStatus.OK, data: allData }
     }
 
     async GetUserId(username: string): Promise<number> {
         const criteria: ISearch = {
-            criteria: [
-                {
-                    field: 1,
-                    searchtype: 'equal',
-                    value: username,
-                },
-            ],
+            criteria: [{ field: 1, searchtype: 'equal', value: username }],
             forcedisplay: [2],
         }
 
@@ -200,42 +209,27 @@ export class GLPI {
 
     async GetUserFio(username: string): Promise<string> {
         const criteria: ISearch = {
-            criteria: [
-                {
-                    field: 1,
-                    searchtype: 'equal',
-                    value: username,
-                },
-            ],
+            criteria: [{ field: 1, searchtype: 'equal', value: username }],
             forcedisplay: [1, 34, 9],
         }
 
         const { status, data } = await this.Search('User', criteria)
-        const fio = data['data']
-            ? data['data'][0][34] === null && data['data'][0][9] === null
-                ? data['data'][1]
-                : `${data['data'][0][34] !== null
-                    ? data['data'][0][34]
-                    : ''}${data['data'][0][9] !== null
-                    ? data['data'][0][34] !== null
-                        ? ' ' + data['data'][0][9]
-                        : '' + data['data'][0][9]
-                    : ''}`
-            : ''
-        return status === HttpStatus.OK ? fio : ''
+        if (status !== HttpStatus.OK || !data['data']) return ''
+
+        const user = data['data'][0]
+        return `${user[34] || ''} ${user[9] || ''}`.trim()
     }
 
-    private async _AddCriteria(criteria: CriteriaType[], parent: string = '') {
+    private async _AddCriteria(criteria: CriteriaType[], parent: string = ''): Promise<object[]> {
         const _criteria = []
-
-        const prefix = parent === '' ? 'criteria' : `${parent}[criteria]`
+        const prefix = parent ? `${parent}[criteria]` : 'criteria'
 
         for (const [index, criterion] of criteria.entries()) {
             if (criterion.criteria) {
-                _criteria.push({ [`${prefix}[${index}][link]`]: criterion.link ? criterion.link : 'AND' })
+                _criteria.push({ [`${prefix}[${index}][link]`]: criterion.link || 'AND' })
                 _criteria.push(...await this._AddCriteria(criterion.criteria, `criteria[${index}]`))
             } else {
-                criterion.link && _criteria.push({ [`${prefix}[${index}][link]`]: criterion.link })
+                if (criterion.link) _criteria.push({ [`${prefix}[${index}][link]`]: criterion.link })
                 _criteria.push({ [`${prefix}[${index}][field]`]: criterion.field })
                 _criteria.push({ [`${prefix}[${index}][searchtype]`]: criterion.searchtype })
                 _criteria.push({ [`${prefix}[${index}][value]`]: criterion.value })
@@ -245,83 +239,45 @@ export class GLPI {
         return _criteria
     }
 
-    async Search(itemType: string, searchData: ISearch) {
+    async Search(itemType: string, searchData: ISearch): Promise<GlpiApiResponse> {
         const rawParams = []
-        searchData.sort && rawParams.push(searchData.sort)
-        searchData.order && rawParams.push(searchData.order)
-        searchData.criteria && rawParams.push(...await this._AddCriteria(searchData.criteria))
-        searchData.forcedisplay && rawParams.push(...searchData.forcedisplay.map((fieldId, index) => ({
-            [`forcedisplay[${index}]`]: fieldId
-        })))
 
-        const flatParams = Object.assign({}, ...rawParams)
-        const params = `?${Object.keys(flatParams).map(key => `${key}=${flatParams[key]}`).join('&')}`
+        if (searchData.sort) rawParams.push({ sort: searchData.sort })
+        if (searchData.order) rawParams.push({ order: searchData.order })
+        if (searchData.criteria) rawParams.push(...await this._AddCriteria(searchData.criteria))
+        if (searchData.forcedisplay) rawParams.push(...searchData.forcedisplay.map((fieldId, index) => ({ [`forcedisplay[${index}]`]: fieldId })))
 
-        console.log('search/' + itemType + params)
-
-        const { status, data } = await this.session.get('search/' + itemType + params)
-        return { status: status === HttpStatus.UNAUTHORIZED ? HttpStatus.BAD_REQUEST : status, data: data }
+        const params = new URLSearchParams(Object.assign({}, ...rawParams)).toString()
+        return this._HandleRequest(this.session.get(`search/${itemType}?${params}`))
     }
 
-    async AddItems(itemType: string, payload: PayloadType | PayloadType[], retries: number = 3): GlpiApiResponse {
-
-        const _payload = {
-            input: payload
-        }
-        try {
-            const ret = await this.session.post(itemType, _payload)
-            const { status, data } = ret
-            return { status, data }
-        } catch (err: any) {
-            if (retries > 0) {
-                return await this.AddItems(itemType, payload, retries - 1)
-            } else return { status: HttpStatus.INTERNAL_SERVER_ERROR, data: err }
-        }
+    async AddItems(itemType: string, payload: PayloadType | PayloadType[], retries: number = 3): Promise<GlpiApiResponse> {
+        return this._HandleRequest(this.session.post(itemType, { input: payload }), retries)
     }
 
-    async UpdateItem(itemType: string, payload: PayloadType | PayloadType[]): GlpiApiResponse {
-        const _payload = {
-            input: payload
-        }
-
-        const { status, data } = await this.session.put(itemType, _payload)
-        return { status: status === HttpStatus.UNAUTHORIZED ? HttpStatus.BAD_REQUEST : status, data: data }
+    async UpdateItem(itemType: string, payload: PayloadType | PayloadType[]): Promise<GlpiApiResponse> {
+        return this._HandleRequest(this.session.put(itemType, { input: payload }))
     }
 
-    async DeleteItems(itemType: string, payload: PayloadType | PayloadType[]): GlpiApiResponse {
-        const _payload = {
-            input: payload
-        }
-
-        const { status, data } = await this.session.delete(itemType, { data: _payload })
-        return { status: status === HttpStatus.UNAUTHORIZED ? HttpStatus.BAD_REQUEST : status, data: data }
+    async DeleteItems(itemType: string, payload: PayloadType | PayloadType[]): Promise<GlpiApiResponse> {
+        return this._HandleRequest(this.session.delete(itemType, { data: { input: payload } }))
     }
 
-    async CreateFollowup(ticketId: number, text: string): GlpiApiResponse {
+    async CreateFollowup(ticketId: number, text: string): Promise<GlpiApiResponse> {
         const payload: PayloadType = {
             itemtype: 'Ticket',
             items_id: ticketId,
             users_id: this.userId,
             content: text,
         }
-
-        return await this.AddItems('ITILFollowup', payload)
+        return this.AddItems('ITILFollowup', payload)
     }
 
-    async SwitchTicketNotification(ticketId: number, state: 0 | 1): GlpiApiResponse {
+    async SwitchTicketNotification(ticketId: number, state: 0 | 1): Promise<GlpiApiResponse> {
         const criteria: ISearch = {
             criteria: [
-                {
-                    field: 3,
-                    searchtype: 'equals',
-                    value: ticketId,
-                },
-                {
-                    link: 'AND',
-                    field: 4,
-                    searchtype: 'equals',
-                    value: this.userId,
-                },
+                { field: 3, searchtype: 'equals', value: ticketId },
+                { link: 'AND', field: 4, searchtype: 'equals', value: this.userId },
             ],
             forcedisplay: [2],
         }
@@ -334,82 +290,70 @@ export class GLPI {
                 use_notification: state
             }))
 
-            return await this.UpdateItem('Ticket_User', payload)
-        } else {
-            return { status: status === HttpStatus.UNAUTHORIZED ? HttpStatus.BAD_REQUEST : status, data: data }
+            return this.UpdateItem('Ticket_User', payload)
         }
+
+        return { status, data }
     }
 
-    async UploadDocument(files: Express.Multer.File[]): GlpiApiResponse {
+    async UploadDocument(files: Express.Multer.File[]): Promise<GlpiApiResponse> {
         const FormData = require('form-data')
         const form = new FormData()
 
         form.append('uploadManifest', JSON.stringify({
-            input: files.map(file => {
-                return {
-                    name: decodeURIComponent(file.originalname),
-                    _filename: [decodeURIComponent(file.originalname)]
-                }
-            })
+            input: files.map(file => ({
+                name: decodeURIComponent(file.originalname),
+                _filename: [decodeURIComponent(file.originalname)],
+            }))
         }))
 
         files.forEach((file) => {
             form.append(decodeURIComponent(file.originalname), file.buffer, decodeURIComponent(file.originalname))
         })
 
-        const { status, data } = await this.session.post('Document', form, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-                ...form.getHeaders()
-            }
-        })
-        return { status: status === HttpStatus.UNAUTHORIZED ? HttpStatus.BAD_REQUEST : status, data: data }
+        const headers = {
+            'Content-Type': 'multipart/form-data',
+            ...form.getHeaders(),
+        }
+
+        return this._HandleRequest(this.session.post('Document', form, { headers }))
     }
 
     async UploadTicketDocument(files: Express.Multer.File[], ticketId: number, asUser: string | null = null) {
         const { status, data } = await this.UploadDocument(files)
+        const userId = asUser ? await this.GetUserId(asUser) : this.userId
 
-        const userId = asUser === null ? this.userId : await this.GetUserId(asUser)
-
-        const payload: PayloadType = data.map((file: any) => ({
+        const payload: PayloadType[] = data.map((file: any) => ({
             documents_id: file.id,
             itemtype: 'Ticket',
             items_id: ticketId,
             users_id: userId,
         }))
 
-        const { status: foo, data: bar } = await this.AddItems('Document_Item', payload)
+        await this.AddItems('Document_Item', payload)
 
-        console.log(foo)
-        console.log(bar)
-
-        return {
-            status: status,
-            ticket_id: ticketId,
-            data: data
-        }
+        return { status, ticket_id: ticketId, data }
     }
 
     async DownloadDocument(docId: number) {
-        const headers = {
-            'Accept': 'application/octet-stream',
-        }
-        return await this.session.get(`Document/${docId}`, {
-            headers: headers,
+        const headers = { 'Accept': 'application/octet-stream' }
+
+        const response = await this.session.get(`Document/${docId}`, {
+            headers,
             responseType: 'arraybuffer'
-        }).then((response: AxiosResponse) => {
-            const mime = response.headers['content-type']
-            const { data, status } = response
-            return {
-                status: status === HttpStatus.UNAUTHORIZED ? HttpStatus.BAD_REQUEST : status,
-                data: data,
-                mime: mime
-            }
         })
+
+        const mime = response.headers['content-type']
+        const { data, status } = response
+
+        return {
+            status: status === HttpStatus.UNAUTHORIZED ? HttpStatus.BAD_REQUEST : status,
+            data,
+            mime
+        }
     }
 
-    async GetUserPicture(userId: number) {
-        const { status, data } = await this.session.get(`User/${userId}/Picture`)
-        return { status: status === HttpStatus.UNAUTHORIZED ? HttpStatus.BAD_REQUEST : status, data: data }
+    async GetUserPicture(userId: number): Promise<GlpiApiResponse> {
+        return this._HandleRequest(this.session.get(`User/${userId}/Picture`))
     }
 }

@@ -1,5 +1,11 @@
 import { ApiProperty } from "@nestjs/swagger"
-import { IFollowupRights, ITaskRights, ITicketRights, ITicketStatusesRights } from '~connectors/glpi/types'
+import {
+    IAgreementRights,
+    IFollowupRights,
+    ITaskRights,
+    ITicketRights,
+    ITicketStatusesRights
+} from '~connectors/glpi/types'
 
 /**
  * @param {number} id
@@ -13,6 +19,12 @@ export class GetImagePreviewParams {
     username: string
 }
 
+
+export class GetAgreementUserParams {
+    @ApiProperty()
+    ticketType: 1 | 2
+}
+
 /**
  * @param {0 | 1} interface
  * @param {ITicketRights} ticket
@@ -21,6 +33,9 @@ export class GetImagePreviewParams {
  * @param {ITicketStatusesRights} status
  */
 export class GetUserAccessResponse {
+    @ApiProperty()
+    glpiId: number
+
     @ApiProperty()
     iface: 0 | 1
 
@@ -36,4 +51,8 @@ export class GetUserAccessResponse {
     @ApiProperty()
     status: ITicketStatusesRights
 
+    @ApiProperty()
+    agreement: IAgreementRights
 }
+
+

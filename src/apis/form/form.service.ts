@@ -1,18 +1,18 @@
-import {HttpStatus, Inject, Injectable} from "@nestjs/common";
-import {InjectDataSource, InjectRepository} from "@nestjs/typeorm";
-import {FORMS_DB_CONNECTION, GLPI_DB_CONNECTION} from "~root/src/constants";
-import {DataSource, In, Repository} from "typeorm";
-import {CACHE_MANAGER} from "@nestjs/cache-manager";
-import {Cache} from "cache-manager";
-import {Response} from "express";
-import {Form} from "~form/entity/form.entity";
-import {GetFormsParams, RequestGlpiSelectDto} from "~form/dto/get-request-dto";
-import {AnswerDto} from "~form/dto/post-request-dto";
-import {Field, FieldType} from "~form/entity/field.entity";
-import {Template} from "~form/entity/template.entity";
-import {CompareType, ConditionLogic, Filter, FilterCompareType, PayloadType, SingleFilter} from "~form/types";
-import {GLPI} from "~root/src/connectors/glpi/glpi-api.connector";
-import dayjs from "dayjs";
+import { HttpStatus, Inject, Injectable } from "@nestjs/common"
+import { InjectDataSource, InjectRepository } from "@nestjs/typeorm"
+import { FORMS_DB_CONNECTION, GLPI_DB_CONNECTION } from "~root/src/constants"
+import { DataSource, In, Repository } from "typeorm"
+import { CACHE_MANAGER } from "@nestjs/cache-manager"
+import { Cache } from "cache-manager"
+import { Response } from "express"
+import { Form } from "~form/entity/form.entity"
+import { GetFormsParams, RequestGlpiSelectDto } from "~form/dto/get-request-dto"
+import { AnswerDto } from "~form/dto/post-request-dto"
+import { Field, FieldType } from "~form/entity/field.entity"
+import { Template } from "~form/entity/template.entity"
+import { CompareType, ConditionLogic, Filter, FilterCompareType, PayloadType, SingleFilter } from "~form/types"
+import { GLPI } from "~root/src/connectors/glpi/glpi-api.connector"
+import dayjs from "dayjs"
 
 
 @Injectable()
@@ -38,18 +38,19 @@ export class Form_Service {
         }
     }
 
-    async GlpiApiWrapper(username: string, dataSource: DataSource, res: Response, func: (glpi: GLPI) => void) {
-        const glpi = await new GLPI(username, dataSource)
+    async GlpiApiWrapper(username: string, res: Response, func: (glpi: GLPI) => void) {
+        const glpi = new GLPI(username, this.cacheService, this.glpi)
+        await glpi.InitSession()
+
+        res.setHeader('Suspend-Reauth', 'true')
         if (glpi.authorized) {
             try {
                 func(glpi)
             } catch (err: any) {
                 return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send(err)
-            } finally {
-                // await glpi.kill_session()
             }
         } else {
-            return res.status(HttpStatus.BAD_REQUEST).json({status: 'error', message: 'Could not log in to GLPI'})
+            return res.status(HttpStatus.UNAUTHORIZED).json({ status: 'error', message: 'Could not login in GLPI' })
         }
     }
 
@@ -86,9 +87,9 @@ export class Form_Service {
                     const queryBuilder = this.formRep.createQueryBuilder('form')
                         .select(['form.id', 'form.title', 'form.icon', 'form.description', 'form.is_active'])
                     if (params.show_inactive && params.show_inactive.toLowerCase() === 'true') {
-                        queryBuilder.where('form.is_active IN (:...isActive)', {isActive: [true, false]})
+                        queryBuilder.where('form.is_active IN (:...isActive)', { isActive: [true, false] })
                     } else {
-                        queryBuilder.where('form.is_active = :isActive', {isActive: true})
+                        queryBuilder.where('form.is_active = :isActive', { isActive: true })
                     }
                     const ret = await queryBuilder.getMany()
 
@@ -105,11 +106,11 @@ export class Form_Service {
 
     //region [ Form field ]
     async GetField(field_id: number) {
-        return this.fieldRep.findOne({where: {id: field_id}})
+        return this.fieldRep.findOne({ where: { id: field_id } })
     }
 
     async ApplyFilter(item: {}, filter: SingleFilter) {
-        const {type} = filter
+        const { type } = filter
         const key = Object.keys(filter).find(k => !['type', 'logic', 'filters'].includes(k))
         const value = filter[key]
 
@@ -176,18 +177,18 @@ export class Form_Service {
     async FilterData(data: {}[], filters: Filter[]) {
         const promises = data.map(async (item) => {
             const result = await this.FilterItem(item, filters)
-            return {item, result}
+            return { item, result }
         })
 
         const results = await Promise.all(promises)
-        return results.filter(({result}) => result).map(({item}) => item)
+        return results.filter(({ result }) => result).map(({ item }) => item)
     }
 
     async GetGlpiSelect(params: RequestGlpiSelectDto, res: Response) {
         if (!('username' in params) || !('field_id' in params)) {
-            res.status(HttpStatus.BAD_REQUEST).json({status: 'error', message: 'field_id or username not provided'})
+            res.status(HttpStatus.BAD_REQUEST).json({ status: 'error', message: 'field_id or username not provided' })
         } else {
-            await this.GlpiApiWrapper('portal_reader', this.glpi, res, async (glpi) => {
+            await this.GlpiApiWrapper('portal_reader', res, async (glpi) => {
                 const field = await this.GetField(params.field_id)
                 let ret = await glpi.GetAllItems(field.values[0]['itemtype'] as string)
 
@@ -223,7 +224,7 @@ export class Form_Service {
     //region [ Form template ]
     async GetFormTemplates(id: number, res: Response) {
         const templates = await this.templateRep.find({
-            where: {formId: id},
+            where: { formId: id },
             relations: ['form']
         })
 
@@ -234,7 +235,7 @@ export class Form_Service {
 
     //region [ Answer ]
     async GlpiSelectReplacer(glpi: GLPI, fieldId: string, value: string): Promise<string> {
-        const field = await this.fieldRep.findOneBy({id: Number(fieldId)})
+        const field = await this.fieldRep.findOneBy({ id: Number(fieldId) })
         const dayjs = require('dayjs')
         const utc = require('dayjs/plugin/utc')
         const timezone = require('dayjs/plugin/timezone')
@@ -288,23 +289,23 @@ export class Form_Service {
     }
 
     async Answer(dto: AnswerDto, res: Response) {
-        await this.GlpiApiWrapper('portal_reader', this.glpi, res, async (glpi) => {
-            const form = await this.formRep.findOneBy({id: dto.form_id})
+        await this.GlpiApiWrapper('portal_reader', res, async (glpi) => {
+            const form = await this.formRep.findOneBy({ id: dto.form_id })
 
             const evaluateCondition = (left: string, right: string, compareType: CompareType) => {
                 switch (compareType) {
                     case CompareType.EQUAL:
-                        return left === right;
+                        return left === right
                     case CompareType.NOT_EQUAL:
-                        return left !== right;
+                        return left !== right
                     case CompareType.LESS_THAN:
-                        return left < right;
+                        return left < right
                     case CompareType.MORE_THEN:
-                        return left > right;
+                        return left > right
                     case CompareType.LESS_OR_EQUAL_THAN:
-                        return left <= right;
+                        return left <= right
                     case CompareType.MORE_OR_EQUAL_THAN:
-                        return left >= right;
+                        return left >= right
                 }
             }
             const validTemplates: Template[] = []
@@ -327,6 +328,7 @@ export class Form_Service {
             const payloads: PayloadType[] = []
             for (const template of validTemplates) {
                 const payload: PayloadType = {
+                    // _users_id_recipient: await glpi.GetUserId(dto.username),
                     _users_id_requester: await glpi.GetUserId(dto.username)
                 }
                 for (const key in template.data) {
@@ -368,13 +370,15 @@ export class Form_Service {
                 payloads.push(payload)
             }
 
-            const ret = await glpi.AddItems('Ticket', payloads)
+            await this.GlpiApiWrapper(dto.username, res, async (_glpi: GLPI) => {
+                const ret = await _glpi.AddItems('Ticket', payloads)
 
-            if ([201, 207].includes(ret.status)) {
-                res.status(ret.status).json(ret.data)
-            } else {
-                res.status(ret.status).json({id: ret.data[0], message: ret.data[1]})
-            }
+                if ([201, 207].includes(ret.status)) {
+                    res.status(ret.status).json(ret.data)
+                } else {
+                    res.status(ret.status).json({ id: ret.data[0], message: ret.data[1] })
+                }
+            })
         })
     }
 

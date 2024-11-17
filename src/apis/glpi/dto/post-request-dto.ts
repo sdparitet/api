@@ -1,5 +1,5 @@
-import {ApiProperty} from '@nestjs/swagger';
-import {AccessoryTypeEnum, ChatItemTypeEnum, MemberTypeEnum, RequestTypeEnum, StatusEnum} from "~glpi/types";
+import { ApiProperty } from '@nestjs/swagger'
+import { AccessoryTypeEnum, ChatItemTypeEnum, MemberTypeEnum, RequestTypeEnum, StatusEnum } from "~glpi/types"
 
 /**region [ Global ] */
 /**
@@ -30,10 +30,23 @@ export class RequestTicketIdAndUsernameDto {
     username: string
 }
 
+export class DefaultResponse {
+    @ApiProperty()
+    id: number
+
+    @ApiProperty()
+    message: string
+}
+
 // endregion
 
 /**region [ Ticket list ] */
 /**region [ Requests ] */
+export class GetTicketsMembersRequest {
+    @ApiProperty()
+    tickets: number[]
+}
+
 // endregion
 
 /**region [ Response ] */
@@ -50,7 +63,7 @@ export class UserTicketsResponse {
     @ApiProperty()
     id: number
 
-    @ApiProperty({description: '1 - инцидент, 2 - запрос', enum: [1, 2]})
+    @ApiProperty({ description: '1 - инцидент, 2 - запрос', enum: [1, 2] })
     type: RequestTypeEnum
 
     @ApiProperty()
@@ -65,10 +78,10 @@ export class UserTicketsResponse {
     @ApiProperty()
     category: string
 
-    @ApiProperty({example: '2024-01-01T00:00:00.000Z'})
+    @ApiProperty({ example: '2024-01-01T00:00:00.000Z' })
     date_creation: string
 
-    @ApiProperty({example: '2024-01-01T00:00:00.000Z'})
+    @ApiProperty({ example: '2024-01-01T00:00:00.000Z' })
     time_to_resolve: string
 }
 
@@ -87,10 +100,10 @@ export class TicketsMembersResponse {
     @ApiProperty()
     name: string
 
-    @ApiProperty({description: '1 - пользователь, 2 - группа', enum: [1, 2]})
+    @ApiProperty({ description: '1 - пользователь, 2 - группа', enum: [1, 2] })
     memberType: MemberTypeEnum
 
-    @ApiProperty({description: '1 - инициатор, 2 - исполнитель, 3 - наблюдатель', enum: [1, 2, 3]})
+    @ApiProperty({ description: '1 - инициатор, 2 - исполнитель, 3 - наблюдатель', enum: [1, 2, 3] })
     accessoryType: AccessoryTypeEnum
 }
 
@@ -98,6 +111,7 @@ export class TicketsMembersResponse {
 // endregion
 
 /**region [ Ticket info ] */
+
 /**region [ Requests ] */
 /**
  * @param {number} ticket_id
@@ -113,6 +127,115 @@ export class TicketFollowupDto {
 
     @ApiProperty()
     text: string
+}
+
+export class GetSolutionRequest {
+    @ApiProperty()
+    solutionId: number
+}
+
+export class CreateSolutionRequest {
+    @ApiProperty()
+    username: string
+
+    @ApiProperty()
+    id: number
+
+    @ApiProperty()
+    content: string
+}
+
+export class SolutionAnswerRequest {
+    @ApiProperty()
+    id: number
+
+    @ApiProperty()
+    ticket_id: number
+
+    @ApiProperty()
+    username: string
+
+    @ApiProperty()
+    status: number
+}
+
+export class SetTaskStateRequest {
+    @ApiProperty()
+    id: number
+
+    @ApiProperty()
+    state: number
+}
+
+export class ChangeTicketStatusRequest {
+    @ApiProperty()
+    status: number
+
+    @ApiProperty()
+    ticketId: number
+
+    @ApiProperty()
+    username: string
+}
+
+/**
+ * @param {number} id
+ * @param {string} username
+ * @param {number} userId
+ * @param {string} content
+ * @param {number} groupId
+ * @param {boolean} isPrivate
+ * @param {number} state
+ */
+export class CreateTaskRequest {
+    @ApiProperty()
+    id: number
+
+    @ApiProperty()
+    username: string
+
+    @ApiProperty()
+    userId: number
+
+    @ApiProperty()
+    content: string
+
+    @ApiProperty()
+    groupId: number
+
+    @ApiProperty()
+    isPrivate: boolean
+
+    @ApiProperty()
+    state: number
+}
+
+export class SetAgreementStatusRequest {
+    @ApiProperty()
+    username: string
+
+    @ApiProperty()
+    id: number
+
+    @ApiProperty()
+    status: 1 | 2 | 3 | 4
+
+    @ApiProperty()
+    comment: string | null
+}
+
+export class CreateAgreementRequest {
+    @ApiProperty()
+    username: string
+
+    @ApiProperty()
+    id: number
+
+    @ApiProperty()
+    content: string
+
+    @ApiProperty()
+    userId: number
 }
 
 /**
@@ -141,6 +264,7 @@ export class AddUserFromTicketRequest {
     @ApiProperty()
     accessoryType: AccessoryTypeEnum
 }
+
 // endregion
 
 /**region [ Response ] */
@@ -181,7 +305,7 @@ export class TicketInfoResponse {
     })
     status: StatusEnum
 
-    @ApiProperty({description: '1 - инцидент, 2 - запрос', enum: [1, 2]})
+    @ApiProperty({ description: '1 - инцидент, 2 - запрос', enum: [1, 2] })
     type: RequestTypeEnum
 
     @ApiProperty()
@@ -214,10 +338,10 @@ export class TicketMembersResponse {
     @ApiProperty()
     name: string
 
-    @ApiProperty({description: '1 - пользователь, 2 - группа', enum: [1, 2]})
+    @ApiProperty({ description: '1 - пользователь, 2 - группа', enum: [1, 2] })
     memberType: MemberTypeEnum
 
-    @ApiProperty({description: '1 - инициатор, 2 - исполнитель, 3 - наблюдатель', enum: [1, 2, 3]})
+    @ApiProperty({ description: '1 - инициатор, 2 - исполнитель, 3 - наблюдатель', enum: [1, 2, 3] })
     accessoryType: AccessoryTypeEnum
 
     @ApiProperty()
@@ -240,7 +364,7 @@ export class TicketChatResponse {
     @ApiProperty()
     name: string
 
-    @ApiProperty({description: 'true - лево, false - право'})
+    @ApiProperty({ description: 'true - лево, false - право' })
     sideLeft: boolean
 
     @ApiProperty()
@@ -248,7 +372,7 @@ export class TicketChatResponse {
 
     @ApiProperty({
         description: 'Ticket description = Message',
-        enum: ['Service', 'Blank', 'Message', 'File', 'Image', 'Solution']
+        enum: ['Service', 'Blank', 'Message', 'File', 'Image', 'Solution', 'Agreement']
     })
     type: ChatItemTypeEnum
 
@@ -257,6 +381,57 @@ export class TicketChatResponse {
 
     @ApiProperty()
     time: string
+}
+
+export class GetSolutionResponse {
+    @ApiProperty()
+    dateApproval: string
+
+    @ApiProperty()
+    userIdApproval: number
+
+    @ApiProperty()
+    status: number
+}
+
+export class GetTaskResponse {
+    @ApiProperty()
+    isPrivate: 0 | 1
+
+    @ApiProperty()
+    actionTime: string
+
+    @ApiProperty()
+    state: 0 | 1 | 2
+
+    @ApiProperty()
+    userTech: string | null
+
+    @ApiProperty()
+    userIdTech: number | null
+
+    @ApiProperty()
+    groupIdTech: number | null
+
+    @ApiProperty()
+    groupTech: string | null
+}
+
+export class GetAgreementInfoResponse {
+    @ApiProperty()
+    validatorId: number
+
+    @ApiProperty()
+    validator: string
+
+    @ApiProperty()
+    validationComment: string | null
+
+    @ApiProperty()
+    status: number
+
+    @ApiProperty()
+    validationDate: string | null
 }
 
 /**

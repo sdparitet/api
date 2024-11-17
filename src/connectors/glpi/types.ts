@@ -25,7 +25,7 @@ export interface IGlpiSession {
             name: string
             interface: InterfaceType
             helpdesk_item_type: ItemType[]
-            ticket_status: [] | Partial<Record<'1' | '2' | '3' | '4' | '5' | '6',
+            ticket_status: null | [] | Partial<Record<'1' | '2' | '3' | '4' | '5' | '6',
                 Record<'1' | '2' | '3' | '4' | '5' | '6', 0 | 1>>>
             ticketvalidation: number
             ticket: number
@@ -67,7 +67,7 @@ export type CriteriaType = {
     criteria?: CriteriaType[]
 }
 
-export type GlpiApiResponse = Promise<{ status: number, data: any }>
+export type GlpiApiResponse = { status: number, data: any }
 export type GlpiApiInitResponse = { status: number, data: IGlpiSession }
 // endregion
 
@@ -77,6 +77,7 @@ export const enum RightsType {
     FOLLOWUP = 'followup',
     TASK = 'task',
     STATUS = 'status',
+    AGREEMENT = 'ticketvalidation',
 }
 
 export enum TicketStatuses {
@@ -156,6 +157,14 @@ export interface ITaskRights {
     canChangeAnyTask: boolean
     canDeleteTasks: boolean
     canViewPublicTasks: boolean
+}
+
+export interface IAgreementRights {
+    canDeleteAgreement: boolean
+    canCreateRequestAgreement: boolean
+    canCreateIncidentAgreement: boolean
+    canAnswerRequestAgreement: boolean
+    canAnswerIncidentAgreement: boolean
 }
 
 // endregion
