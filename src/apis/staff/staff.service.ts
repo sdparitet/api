@@ -9,7 +9,7 @@ import {  Staff_Group,  Staff_Group_Dto } from '~staff/entity/group.entity';
 import {  Staff_Position } from '~staff/entity/position.entity';
 import {  Staff_Stat } from '~staff/entity/stat.entity';
 import { STAFF_GetRequestDto } from '~staff/dto/get-request-dto';
-import { STAFF_PostRequestDto } from '~staff/dto/post-request-dto';
+import { STAFF_PostRequestDto, STAFF_EditPosDto } from '~staff/dto/post-request-dto'
 import { KPI_DB_CONNECTION } from '~root/src/constants';
 
 @Injectable()
@@ -110,6 +110,47 @@ export class Staff_Service {
       }
 
       // await this.statRepository.upsert(upsert, ['date', 'productId'])
+   }
+
+   async EditPosition(dto: Partial<STAFF_EditPosDto>) {
+      const pos = await this.positionRepository.findOne({
+         where: {
+            id: dto.id || -1
+         }
+      })
+      if (pos) {
+         await this.positionRepository.update({
+            id: pos.id,
+         }, {
+            ...pos,
+            name: dto.name || pos.name,
+         })
+      }
+      else if (dto.id && dto.groupId && dto.name.length > 0) {
+         const grp = await this.groupRepository.findOne({
+            where: {
+               id: dto.groupId || -1
+            }
+         })
+         if (grp) {
+            await this.positionRepository.insert({
+               ...dto,
+               group: grp,
+               stats: []
+            })
+         }
+      }
+   }
+
+   async RemovePosition(dto: Partial<STAFF_EditPosDto>) {
+      const pos = await this.positionRepository.findOne({
+         where: {
+            id: dto.id || -1
+         }
+      })
+      if (pos) {
+         await this.positionRepository.remove(pos)
+      }
    }
 
 }
