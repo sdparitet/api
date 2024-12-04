@@ -148,7 +148,7 @@ export class GLPI {
             }
         }
         const helper = new Helper(sessionInfo)
-        return { glpiId: this.userId, ...await helper.getRights() }
+        return { glpiId: this.userId, profile: {...await helper.getRights()}}
     }
 
     private async _HandleRequest<T>(request: Promise<AxiosResponse<T>>, retries: number = 3): Promise<GlpiApiResponse> {

@@ -158,6 +158,14 @@ export class GLPI_Service {
     // endregion
 
     //region [ Ticket info ]
+    async GetProfile({ username }, res: Response) {
+        await this.GlpiApiWrapper(username, res, async (glpi) => {
+            const ret = await glpi.GetUserRights()
+            res.status(HttpStatus.OK).json(ret)
+        })
+    }
+
+    // ToDo Delete
     async GetUserAccess({ username }, res: Response) {
         await this.GlpiApiWrapper(username, res, async (glpi) => {
             const ret = await glpi.GetUserRights()

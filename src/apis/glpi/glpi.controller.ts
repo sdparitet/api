@@ -99,6 +99,15 @@ export class GLPI_Controller {
     }
 
     @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+    @Get("/GetProfile")
+    @Header("content-type", "application/json")
+    @ApiResponse({ type: [GetUserAccessResponse] })
+    gp(@Query() params: { username: string }, @Res() res: Response) {
+        return this.glpiService.GetProfile(params, res)
+    }
+
+    // ToDo Delete
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
     @Get("/GetUserAccess")
     @Header("content-type", "application/json")
     @ApiResponse({ type: [GetUserAccessResponse] })

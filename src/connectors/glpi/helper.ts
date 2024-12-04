@@ -12,6 +12,8 @@ export class Helper {
     private readonly sessionInfo: IGlpiSession['session']
     private readonly _interface: InterfaceType
 
+    private _id: number
+    private _name: string
     private _ticketRights: ITicketRights
     private _followupRights: IFollowupRights
     private _taskRights: Partial<ITaskRights>
@@ -32,6 +34,9 @@ export class Helper {
 
     private async _ParseSession() {
         const activeProfile = this.sessionInfo.glpiactiveprofile
+       console.log(activeProfile)
+        this._id = activeProfile.id
+        this._name = activeProfile.name
         this._ticketRights = await this._ParseRights(RightsType.TICKET, activeProfile.ticket) as ITicketRights
         this._followupRights = await this._ParseRights(RightsType.FOLLOWUP, activeProfile.followup) as IFollowupRights
         this._taskRights = await this._ParseRights(RightsType.TASK, activeProfile.task) as ITaskRights
@@ -360,7 +365,9 @@ export class Helper {
         await this._ParseSession()
 
         return {
-            iface: this._interface === 'central' ? 0 : 1,
+            id: this._id,
+            name: this._name,
+            isSimple: this._interface !== 'central',
             [RightsType.TICKET]: this._ticketRights,
             [RightsType.FOLLOWUP]: this._followupRights,
             [RightsType.TASK]: this._taskRights,
