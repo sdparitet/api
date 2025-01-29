@@ -34,7 +34,6 @@ export class Helper {
 
     private async _ParseSession() {
         const activeProfile = this.sessionInfo.glpiactiveprofile
-       console.log(activeProfile)
         this._id = activeProfile.id
         this._name = activeProfile.name
         this._ticketRights = await this._ParseRights(RightsType.TICKET, activeProfile.ticket) as ITicketRights
@@ -365,9 +364,7 @@ export class Helper {
         await this._ParseSession()
 
         return {
-            id: this._id,
-            name: this._name,
-            isSimple: this._interface !== 'central',
+            iface: this._interface === 'central' ? 0 : 1,
             [RightsType.TICKET]: this._ticketRights,
             [RightsType.FOLLOWUP]: this._followupRights,
             [RightsType.TASK]: this._taskRights,
@@ -375,4 +372,19 @@ export class Helper {
             'agreement': this._validateRights,
         }
     }
+
+   async getProfile() {
+      await this._ParseSession()
+
+      return {
+         id: this._id,
+         name: this._name,
+         isSimple: this._interface !== 'central',
+         [RightsType.TICKET]: this._ticketRights,
+         [RightsType.FOLLOWUP]: this._followupRights,
+         [RightsType.TASK]: this._taskRights,
+         [RightsType.STATUS]: this._ticketStatusesRights,
+         'agreement': this._validateRights,
+      }
+   }
 }

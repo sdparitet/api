@@ -126,8 +126,7 @@ export class Staff_Service {
             name: dto.name || pos.name,
          })
       }
-      // else if (dto.groupId && dto.name.length > 0) {      # ToDo Я не знаю почему было удалено dto.id нужно узнать
-      else if (dto.id && dto.groupId && dto.name.length > 0) {
+      else if (dto.groupId && dto.name.length > 0) {
          const grp = await this.groupRepository.findOne({
             where: {
                id: dto.groupId || -1

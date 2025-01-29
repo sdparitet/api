@@ -178,6 +178,17 @@ export class ChangeTicketStatusRequest {
     username: string
 }
 
+export class SetTicketCategoryRequest {
+   @ApiProperty()
+   username: string
+
+   @ApiProperty()
+   ticketId: number
+
+   @ApiProperty()
+   category: number
+}
+
 /**
  * @param {number} id
  * @param {string} username

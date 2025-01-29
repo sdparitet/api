@@ -15,33 +15,34 @@ import { GlobalRoles } from '~roles/All-roles'
 import { GLPI_Roles } from '~roles/glpi.roles'
 import { GLPI_Service } from '~glpi/glpi.service'
 import {
-    TicketInfoResponse,
-    TicketMembersResponse,
-    TicketChatResponse,
-    RequestUsernameDto,
-    RequestTicketIdDto,
-    UserTicketsResponse,
-    TicketsMembersResponse,
-    RequestTicketIdAndUsernameDto,
-    TicketFollowupDto,
-    UserAccessOnTicket,
-    CreateTicketFollowupResponse,
-    ResponseGetImagePreviewResponse,
-    GlpiUsersInGroupsResponse,
-    UploadTicketDocumentResponse,
-    RequestTicketIdAndUsernameAndStateDto,
-    DeleteUserFromTicketRequest,
-    GetSolutionRequest,
-    GetSolutionResponse,
-    GetTaskResponse,
-    SetTaskStateRequest,
-    CreateSolutionRequest,
-    SolutionAnswerRequest,
-    DefaultResponse,
-    ChangeTicketStatusRequest,
-    CreateTaskRequest,
-    GetTicketsMembersRequest,
-    SetAgreementStatusRequest, GetAgreementInfoResponse, CreateAgreementRequest,
+   TicketInfoResponse,
+   TicketMembersResponse,
+   TicketChatResponse,
+   RequestUsernameDto,
+   RequestTicketIdDto,
+   UserTicketsResponse,
+   RequestTicketIdAndUsernameDto,
+   TicketFollowupDto,
+   UserAccessOnTicket,
+   CreateTicketFollowupResponse,
+   ResponseGetImagePreviewResponse,
+   GlpiUsersInGroupsResponse,
+   UploadTicketDocumentResponse,
+   RequestTicketIdAndUsernameAndStateDto,
+   DeleteUserFromTicketRequest,
+   GetSolutionRequest,
+   GetSolutionResponse,
+   GetTaskResponse,
+   SetTaskStateRequest,
+   CreateSolutionRequest,
+   SolutionAnswerRequest,
+   DefaultResponse,
+   ChangeTicketStatusRequest,
+   CreateTaskRequest,
+   GetTicketsMembersRequest,
+   SetAgreementStatusRequest,
+   GetAgreementInfoResponse,
+   CreateAgreementRequest, SetTicketCategoryRequest,
 } from '~glpi/dto/post-request-dto'
 import { Response } from "express"
 
@@ -254,6 +255,22 @@ export class GLPI_Controller {
     @ApiBody({ required: true, type: ChangeTicketStatusRequest })
     cts(@Body() dto: ChangeTicketStatusRequest, @Res() res: Response) {
         return this.glpiService.ChangeTicketStatus(dto, res)
+    }
+
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+    @Post("/GetCategories")
+    @Header("content-type", "application/json")
+    @ApiBody({ required: true, type: RequestUsernameDto })
+    gc(@Body() dto: RequestUsernameDto, @Res() res: Response) {
+        return this.glpiService.GetCategories(dto, res)
+    }
+
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+    @Post("/SetTicketCategory")
+    @Header("content-type", "application/json")
+    @ApiBody({ required: true, type: SetTicketCategoryRequest })
+    sc(@Body() dto: SetTicketCategoryRequest, @Res() res: Response) {
+        return this.glpiService.SetTicketCategory(dto, res)
     }
 
     @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))

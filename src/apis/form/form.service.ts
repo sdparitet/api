@@ -12,7 +12,6 @@ import { Field, FieldType } from "~form/entity/field.entity"
 import { Template } from "~form/entity/template.entity"
 import { CompareType, ConditionLogic, Filter, FilterCompareType, PayloadType, SingleFilter } from "~form/types"
 import { GLPI } from "~root/src/connectors/glpi/glpi-api.connector"
-import dayjs from "dayjs"
 
 
 @Injectable()
@@ -57,19 +56,18 @@ export class Form_Service {
    //endregion
 
    //region [ Form ]
-   async GetForms(params: GetFormsParams, res: Response, id?: number) {
+   async GetForms(username: string, params: GetFormsParams, res: Response, id?: number) {
       const ttl = 60 * 60 * 24 * 14  // 2 недели
-      await this.RequestWrapper(res, async () => {
+      await this.GlpiApiWrapper(username, res, async (glpi) => {
          if (id) {
-            // const cachedData: string = await this.cacheService.get(`form_${id}`)
-            const cachedData = undefined
+            const cachedData: string = await this.cacheService.get(`form_${id}`)
             if (cachedData) {
                res.status(HttpStatus.OK).json(JSON.parse(cachedData))
             } else {
                const ret = (await this.formRep.find({
                   where: {
                      id: id,
-                     // is_active: In(params.show_inactive && params.show_inactive.toLowerCase() === 'true' ? [true, false] : [true])
+                     is_active: In(params.show_inactive && params.show_inactive.toLowerCase() === 'true' ? [true, false] : [true])
                   },
                }))
 
@@ -79,25 +77,32 @@ export class Form_Service {
                else res.status(HttpStatus.BAD_REQUEST).json([])
             }
          } else {
-            // const cachedData: string = await this.cacheService.get('forms')
-            const cachedData = undefined
+
+            let forms: Form[] = []
+
+            const cachedData: string = await this.cacheService.get('forms')
             if (cachedData) {
-               res.status(HttpStatus.OK).json(JSON.parse(cachedData))
+               forms = JSON.parse(cachedData)
+               // res.status(HttpStatus.OK).json(JSON.parse(cachedData))
             } else {
                const queryBuilder = this.formRep.createQueryBuilder('form')
-                  .select(['form.id', 'form.title', 'form.icon', 'form.description', 'form.is_active'])
+                  .select(['form.id', 'form.title', 'form.icon', 'form.description', 'form.is_active', 'form.profiles'])
                if (params.show_inactive && params.show_inactive.toLowerCase() === 'true') {
                   queryBuilder.where('form.is_active IN (:...isActive)', { isActive: [true, false] })
                } else {
                   queryBuilder.where('form.is_active = :isActive', { isActive: true })
                }
-               const ret = await queryBuilder.getMany()
+               const ret = await queryBuilder.orderBy('id').getMany()
 
                await this.cacheService.set(`forms`, JSON.stringify(ret), ttl)
 
-               if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret)
-               else res.status(HttpStatus.BAD_REQUEST).json([])
+               forms = ret
             }
+
+            const userInfo = await glpi.GetUserProfile()
+            forms = forms.filter(form => form.profiles === null || form.profiles.length === 0 || form.profiles.includes(userInfo.profile.id))
+
+            res.status(HttpStatus.OK).json(forms)
          }
       })
    }
@@ -337,7 +342,6 @@ export class Form_Service {
          }
 
          const validTemplates: Template[] = []
-         // const validTemplates: Template[] = form.templates.filter(template => {return evaluateConditionGroup(dto.data, template.conditions)})
          form.templates.forEach(template => {
             if (template.conditions.length > 0) {
                let isValid = true

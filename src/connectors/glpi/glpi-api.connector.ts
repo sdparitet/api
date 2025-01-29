@@ -133,6 +133,24 @@ export class GLPI {
         return this.session.get('killSession')
     }
 
+    async GetUserProfile(asUser: string = this._username, sessionInfo: IGlpiSession = this.sessionInfo) {
+        if (asUser !== this._username) {
+            const token = await this._GetUserToken(asUser)
+            if (token) {
+                const { status, data } = await this._Login(token)
+                if (status === HttpStatus.OK) {
+                    sessionInfo = data
+                } else {
+                    return null
+                }
+            } else {
+                return null
+            }
+        }
+        const helper = new Helper(sessionInfo)
+        return { glpiId: this.userId, profile: {...await helper.getProfile()}}
+    }
+
     async GetUserRights(asUser: string = this._username, sessionInfo: IGlpiSession = this.sessionInfo) {
         if (asUser !== this._username) {
             const token = await this._GetUserToken(asUser)
@@ -148,13 +166,12 @@ export class GLPI {
             }
         }
         const helper = new Helper(sessionInfo)
-        return { glpiId: this.userId, profile: {...await helper.getRights()}}
+        return helper.getRights()
     }
 
     private async _HandleRequest<T>(request: Promise<AxiosResponse<T>>, retries: number = 3): Promise<GlpiApiResponse> {
         try {
             const { status, data } = await request
-
             return { status, data }
         } catch (err) {
             if (retries > 0) {
@@ -199,7 +216,7 @@ export class GLPI {
 
     async GetUserId(username: string): Promise<number> {
         const criteria: ISearch = {
-            criteria: [{ field: 1, searchtype: 'equal', value: username }],
+            criteria: [{ field: 1, searchtype: 'contains', value: `^${username}$` }],
             forcedisplay: [2],
         }
 
@@ -209,7 +226,7 @@ export class GLPI {
 
     async GetUserFio(username: string): Promise<string> {
         const criteria: ISearch = {
-            criteria: [{ field: 1, searchtype: 'equal', value: username }],
+            criteria: [{ field: 1, searchtype: 'contains', value: `^${username}$` }],
             forcedisplay: [1, 34, 9],
         }
 

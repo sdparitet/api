@@ -6,7 +6,6 @@ import {Template} from "~form/entity/template.entity";
 
 @Entity({database: FORMS_DB_CONNECTION})
 export class Form {
-
     @PrimaryGeneratedColumn({unsigned: true, zerofill: true})
     id: number
 
@@ -43,4 +42,7 @@ export class Form {
         }
     )
     templates: Template[]
+
+   @Column({type: 'jsonb', nullable: true, default: []})
+   profiles: number[]
 }

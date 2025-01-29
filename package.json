@@ -1,6 +1,6 @@
 ﻿{
     "name": "api",
-    "version": "3.0.48",
+    "version": "3.0.58",
     "author": "Mozhaev.AI",
     "private": true,
     "scripts": {

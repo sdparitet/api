@@ -12,10 +12,11 @@ import {Field} from "~form/entity/field.entity";
 import {Condition} from "~form/entity/condition.entity";
 import {Template} from "~form/entity/template.entity";
 import {TemplateCondition} from "~form/entity/template.conditions.entity";
+import { JwtService } from '@nestjs/jwt'
 
 
 @Module({
-    providers: [Form_Service],
+    providers: [JwtService, Form_Service],
     controllers: [Form_Controller],
     imports: [
         TypeOrmModule.forFeature([Form, Block, Field, Condition, Template, TemplateCondition], FORMS_DB_CONNECTION),
