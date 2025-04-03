@@ -149,6 +149,9 @@ export class Staff_Service {
          }
       })
       if (pos) {
+         await  this.statRepository.delete({
+            positionId: pos.id
+         })
          await this.positionRepository.remove(pos)
       }
    }

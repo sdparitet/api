@@ -1,4 +1,4 @@
-FROM node:20.10.0-alpine as build
+FROM node:20.10.0-alpine AS build
 
 WORKDIR /app
 
@@ -6,14 +6,14 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --silent
 
-ENV NODE_ENV production
+ENV NODE_ENV=production
 
 COPY . ./
 
 RUN npm run build
 
 
-FROM node:20.10.0-alpine as prod
+FROM node:20.10.0-alpine AS prod
 
 WORKDIR /prod
 

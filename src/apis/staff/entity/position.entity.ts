@@ -24,6 +24,7 @@ export class Staff_Position {
       type => Staff_Stat,
       stats => stats.position,
       {
+         cascade: true,
          orphanedRowAction: 'nullify',
       }
    )
@@ -35,6 +36,7 @@ export class Staff_Position {
       group => group.positions,
    )
    group: Staff_Group;
+
    @Column({ nullable: false })
    groupId: number;
 }

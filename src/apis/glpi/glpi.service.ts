@@ -1,7 +1,7 @@
-import { Injectable, HttpStatus, Inject } from "@nestjs/common"
-import { InjectDataSource } from "@nestjs/typeorm"
-import { DataSource } from "typeorm"
-import { Response } from "express"
+import { Injectable, HttpStatus, Inject } from '@nestjs/common'
+import { InjectDataSource } from '@nestjs/typeorm'
+import { DataSource } from 'typeorm'
+import { Response } from 'express'
 
 import { GLPI_DB_CONNECTION } from '~root/src/constants'
 import {
@@ -13,7 +13,6 @@ import {
    RequestUsernameDto,
    TicketFollowupDto,
    TicketsMembersResponse,
-   UserTicketsResponse,
    GlpiUsersInGroupsResponse,
    UploadTicketDocumentResponse,
    RequestTicketIdAndUsernameAndStateDto,
@@ -32,14 +31,15 @@ import {
    CreateAgreementRequest,
    SetTicketCategoryRequest,
 } from '~glpi/dto/post-request-dto'
-import { GetAgreementUserParams, GetImagePreviewParams } from "~glpi/dto/get-request-dto"
-import { GLPI } from "~root/src/connectors/glpi/glpi-api.connector"
-import { CACHE_MANAGER } from "@nestjs/cache-manager"
-import { Cache } from "cache-manager"
-import { Sharp } from "sharp"
+import { GetAgreementUserParams, GetImagePreviewParams, GetImagesPreviewParams } from '~glpi/dto/get-request-dto'
+import { GLPI } from '~root/src/connectors/glpi/glpi-api.connector'
+import { CACHE_MANAGER } from '@nestjs/cache-manager'
+import { Cache } from 'cache-manager'
+import { Sharp } from 'sharp'
 import * as sharp from 'sharp'
 import * as mime from 'mime-types'
-import { ISearch, PayloadType } from '~connectors/glpi/types'
+import { PayloadType } from '~connectors/glpi/types'
+
 
 @Injectable()
 export class GLPI_Service {
@@ -120,6 +120,117 @@ export class GLPI_Service {
             where t.is_deleted = 0
               and u.type = 2
               and u.users_id = ${glpi.userId};`)
+
+         if (ret) res.status(HttpStatus.OK).json(ret)
+         else res.status(HttpStatus.BAD_REQUEST)
+      })
+   }
+
+   async GetUserAgreementsTickets(dto: RequestUsernameDto, res: Response) {
+      await this.GlpiApiWrapper(dto.username, res, async (glpi: GLPI) => {
+         const ret = await this.glpi.query(`
+            select t.id
+                 , t.type
+                 , t.name
+                 , t.status
+                 , c.completename as category
+                 , t.date_creation
+                 , t.time_to_resolve
+                 , sub.need_agreement
+            from (select tickets_id,
+                         if(max(status = 2), 1, 0) as need_agreement
+                  from (glpi_ticketvalidations)
+                  where users_id_validate = ${glpi.userId}
+                  group by tickets_id) as sub
+                    left join glpi_tickets t
+                              on sub.tickets_id = t.id
+                    left join glpi_itilcategories c
+                              on t.itilcategories_id = c.id
+            where t.is_deleted = 0;`)
+
+         if (ret) res.status(HttpStatus.OK).json(ret)
+         else res.status(HttpStatus.BAD_REQUEST)
+      })
+   }
+
+   async GetUserGroupsTickets(dto: RequestUsernameDto, res: Response) {
+      await this.GlpiApiWrapper(dto.username, res, async (glpi: GLPI) => {
+         const ret = await this.glpi.query(`
+            select t.id
+                 , t.type
+                 , t.name
+                 , t.status
+                 , c.completename as category
+                 , t.date_creation
+                 , t.time_to_resolve
+            from glpi_tickets t
+                    left join glpi.glpi_itilcategories c on t.itilcategories_id = c.id
+            where t.id in (select tickets_id
+                           from glpi_groups_tickets
+                           where groups_id in (select groups_id from glpi_groups_users where users_id = ${glpi.userId}))
+              and is_deleted = 0;`)
+
+         if (ret) res.status(HttpStatus.OK).json(ret)
+         else res.status(HttpStatus.BAD_REQUEST)
+      })
+   }
+
+   async GetCultureTickets(dto: RequestUsernameDto, res: Response) {
+      await this.GlpiApiWrapper(dto.username, res, async (glpi: GLPI) => {
+         const ret = await this.glpi.query(`
+            select t.id
+                 , t.type
+                 , t.name
+                 , t.status
+                 , c.completename as category
+                 , t.date_creation
+                 , t.time_to_resolve
+                 , 2              as need_agreement
+            from glpi_tickets t
+                    left join glpi.glpi_itilcategories c on t.itilcategories_id = c.id
+            where t.itilcategories_id in (select id from glpi_itilcategories where completename like 'Культура производства%')
+              and t.id in (select tickets_id
+                           from glpi_tickets_users tu
+                           where tu.users_id = ${glpi.userId}
+                             and tu.type = 2)
+              and is_deleted = 0
+            union
+            select t.id
+                 , t.type
+                 , t.name
+                 , t.status
+                 , c.completename as category
+                 , t.date_creation
+                 , t.time_to_resolve
+                 , 3
+            from glpi_tickets t
+                    left join glpi.glpi_itilcategories c on t.itilcategories_id = c.id
+            where t.itilcategories_id in (select id from glpi_itilcategories where completename like 'Культура производства%')
+              and t.id in (select tickets_id
+                           from glpi_groups_tickets gt
+                           where gt.groups_id in (select groups_id from glpi_groups_users where users_id = ${glpi.userId})
+                             and gt.type = 2)
+              and is_deleted = 0
+            union
+            select t.id
+                 , t.type
+                 , t.name
+                 , t.status
+                 , c.completename as category
+                 , t.date_creation
+                 , t.time_to_resolve
+                 , sub.need_agreement
+            from (select tickets_id,
+                         if(max(status = 2), 1, 0) as need_agreement
+                  from glpi_ticketvalidations
+                  where users_id_validate = ${glpi.userId}
+                  group by tickets_id) as sub
+                    left join glpi_tickets t
+                              on sub.tickets_id = t.id
+                    left join glpi_itilcategories c
+                              on t.itilcategories_id = c.id
+            where t.is_deleted = 0
+              and t.itilcategories_id in (select id from glpi_itilcategories where completename like 'Культура производства%');`)
 
          if (ret) res.status(HttpStatus.OK).json(ret)
          else res.status(HttpStatus.BAD_REQUEST)
@@ -215,49 +326,20 @@ export class GLPI_Service {
                status: ret.data.status,
                type: ret.data.type,
                category: category,
-               categoryId: +ret.data.links.find((link: {rel: string, href: string}) => link.rel === 'ITILCategory')?.href.split('/').pop() || null,
+               categoryId: +ret.data.links.find((link: {
+                  rel: string,
+                  href: string
+               }) => link.rel === 'ITILCategory')?.href.split('/').pop() || null,
                date_creation: ret.data.date_creation,
                time_to_resolve: ret.data.time_to_resolve,
                solvedate: ret.data.solvedate,
                closedate: ret.data.closedate,
             }
-            // const {
-            //    id,
-            //    name,
-            //    status,
-            //    type,
-            //    itilcategories_id: escapedCategory,
-            //    date_creation,
-            //    time_to_resolve,
-            //    solvedate,
-            //    closedate,
-            // } = ret.data
-
-
 
             res.status(ret.status).json(data)
 
          }
       })
-
-      // await this.RequestWrapper(res, async () => {
-      //     const ret: TicketInfoResponse[] = await this.glpi.query(`
-      //         select t.id
-      //              , t.name
-      //              , t.status
-      //              , t.type
-      //              , c.completename as category
-      //              , t.date_creation
-      //              , t.time_to_resolve
-      //              , t.solvedate
-      //              , t.closedate
-      //         from glpi_tickets t
-      //                  left join glpi_itilcategories c on t.itilcategories_id = c.id
-      //         where t.id = ${dto.id};`)
-      //
-      //     if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret[0])
-      //     else res.status(HttpStatus.BAD_REQUEST).json([])
-      // })
    }
 
    async GetTicketMembers(dto: RequestTicketIdDto, res: Response) {
@@ -466,11 +548,11 @@ export class GLPI_Service {
             1: 6,
             2: 5,
             3: 6,
-            4: 1
+            4: 1,
          }
          await glpi.UpdateItem('Ticket', {
             id: dto.ticket_id,
-            status: targetTicketStatusBySolveAnswerStatus[dto.status]
+            status: targetTicketStatusBySolveAnswerStatus[dto.status],
          })
          if (ret.data && ret.data.length > 0) res.status(ret.status).json({ ...ret.data[0], status: dto.status })
          else res.status(HttpStatus.INTERNAL_SERVER_ERROR).json([])
@@ -560,7 +642,7 @@ export class GLPI_Service {
             groups_id_tech: dto.groupId,
             content: dto.content,
             is_private: dto.isPrivate,
-            state: dto.state
+            state: dto.state,
          }
 
          const ret = await glpi.AddItems('TicketTask', payload)
@@ -619,7 +701,7 @@ export class GLPI_Service {
          const payload: PayloadType = {
             id: dto.id,
             status: dto.status,
-            comment_validation: dto.comment
+            comment_validation: dto.comment,
          }
 
          const { status, data } = await glpi.UpdateItem('TicketValidation', payload)
@@ -722,7 +804,7 @@ export class GLPI_Service {
             id: ret.data.id,
             message: ret.data.message,
             userId: glpi.userId,
-            userFio: glpi.userFio
+            userFio: glpi.userFio,
          })
       })
    }
@@ -744,17 +826,20 @@ export class GLPI_Service {
 
                if (mimeType && mimeType.startsWith('image/')) {
                   const rotatedBuffer = await sharp(file.buffer)
-                     .rotate()
-                     .toBuffer()
+                  .rotate()
+                  .toBuffer()
                   return { ...file, buffer: rotatedBuffer }
                } else {
                   return file
                }
-            })
+            }),
          )
 
          await this.GlpiApiWrapper('portal_reader', res, async (glpi) => {
             const ret: UploadTicketDocumentResponse = await glpi.UploadTicketDocument(processedFiles, dto.id, dto.username)
+            if (ret.status !== HttpStatus.CREATED) {
+               console.log(`UploadTicketDocument error\nTicket:${dto.id}\nStatus:${ret.status}\nData: ${ret.data}`)
+            }
             res.status(ret.status).json({ id: ret.data[0].id, userId: glpi.userId, userFio: glpi.userFio })
          })
       } else {
@@ -825,34 +910,57 @@ export class GLPI_Service {
          await this.GlpiApiWrapper(params.username, res, async (glpi) => {
             const ret = await glpi.DownloadDocument(params.id)
             if (ret.status === HttpStatus.OK) {
-               if (ret.mime.split('/').length > 0 && ret.mime.split('/')[0] === 'image') {
-                  const sharp = require('sharp')
-                  const image = await sharp(Buffer.from(ret.data, "base64"))
-                  let compressedImageBuffer: Buffer | null = await this.CompressImage(image)
+               if (ret.mime === undefined) {
+                  res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({status: 'error', message: 'File mime type not provided' })
+               } else {
+                  if (ret.mime.split('/').length > 0 && ret.mime.split('/')[0] === 'image') {
+                     const sharp = require('sharp')
+                     const image = await sharp(Buffer.from(ret.data, 'base64'))
+                     let compressedImageBuffer: Buffer | null = await this.CompressImage(image)
 
-                  if (compressedImageBuffer !== null) {
-                     const compressedImage = await sharp(compressedImageBuffer)
-                     const compressedMeta = await compressedImage.metadata()
-                     const bufferData = await compressedImage.toBuffer()
-                     res.status(ret.status).json({
-                        id: params.id,
-                        asFile: false,
-                        fileName: filename,
-                        fileSize: ret.data.length,
-                        fileWidth: compressedMeta.width,
-                        fileHeight: compressedMeta.height,
-                        base64: bufferData.toString('base64'),
-                     })
+                     if (compressedImageBuffer !== null) {
+                        const compressedImage = await sharp(compressedImageBuffer)
+                        const compressedMeta = await compressedImage.metadata()
+                        const bufferData = await compressedImage.toBuffer()
+                        res.status(ret.status).json({
+                           id: params.id,
+                           asFile: false,
+                           fileName: filename,
+                           fileSize: ret.data.length,
+                           fileWidth: compressedMeta.width,
+                           fileHeight: compressedMeta.height,
+                           base64: bufferData.toString('base64'),
+                        })
 
-                     await this.cacheService.set(params.id.toString(), JSON.stringify({
-                        id: params.id,
-                        asFile: false,
-                        fileName: filename,
-                        fileSize: compressedMeta.size,
-                        fileWidth: compressedMeta.width,
-                        fileHeight: compressedMeta.height,
-                        base64: bufferData.toString('base64'),
-                     }), ttl)
+                        await this.cacheService.set(params.id.toString(), JSON.stringify({
+                           id: params.id,
+                           asFile: false,
+                           fileName: filename,
+                           fileSize: compressedMeta.size,
+                           fileWidth: compressedMeta.width,
+                           fileHeight: compressedMeta.height,
+                           base64: bufferData.toString('base64'),
+                        }), ttl)
+                     } else {
+                        res.status(ret.status).json({
+                           id: params.id,
+                           asFile: true,
+                           fileName: filename,
+                           fileSize: ret.data.length,
+                           fileWidth: 0,
+                           fileHeight: 0,
+                           base64: '',
+                        })
+                        await this.cacheService.set(params.id.toString(), JSON.stringify({
+                           id: params.id,
+                           asFile: true,
+                           fileName: filename,
+                           fileSize: ret.data.length,
+                           fileWidth: 0,
+                           fileHeight: 0,
+                           base64: '',
+                        }), ttl)
+                     }
                   } else {
                      res.status(ret.status).json({
                         id: params.id,
@@ -873,25 +981,6 @@ export class GLPI_Service {
                         base64: '',
                      }), ttl)
                   }
-               } else {
-                  res.status(ret.status).json({
-                     id: params.id,
-                     asFile: true,
-                     fileName: filename,
-                     fileSize: ret.data.length,
-                     fileWidth: 0,
-                     fileHeight: 0,
-                     base64: '',
-                  })
-                  await this.cacheService.set(params.id.toString(), JSON.stringify({
-                     id: params.id,
-                     asFile: true,
-                     fileName: filename,
-                     fileSize: ret.data.length,
-                     fileWidth: 0,
-                     fileHeight: 0,
-                     base64: '',
-                  }), ttl)
                }
             } else {
                res.status(ret.status).json([])
@@ -902,13 +991,40 @@ export class GLPI_Service {
       }
    }
 
-   // ToDo ctd
-   async Test(res: Response, params: any) {
-      await this.GlpiApiWrapper('portal_reader', res, async (glpi) => {
+   async GetImagesPreview(params: GetImagesPreviewParams, res: Response) {
+      await this.GlpiApiWrapper(params.username, res, async (glpi) => {
+         const ids = params.id.split(',').map(Number)
+         if (ids.length > 0) {
+            let data = []
+            for (const id of ids) {
+               let filename = 'unknown.file'
+               const _ret = await this.glpi.query(`select filename
+                                                   from glpi_documents
+                                                   where id = '${id}';`)
+               if (_ret) {
+                  filename = _ret[0].filename
+               }
 
-         res.status(HttpStatus.UNAUTHORIZED).json([])
+               const ret = await glpi.DownloadDocument(id)
+               if (ret.status === HttpStatus.OK) {
+                  const sharp = require('sharp')
+                  const image = await sharp(Buffer.from(ret.data, 'base64'))
+                  const meta = await image.metadata()
+                  const buffer = await image.toBuffer()
+                  data.push({
+                     id: id,
+                     asFile: false,
+                     fileName: filename,
+                     fileSize: ret.data.length,
+                     fileWidth: meta.width,
+                     fileHeight: meta.height,
+                     base64: buffer.toString('base64'),
+                  })
+               }
+            }
+            res.status(HttpStatus.OK).json(data)
+         }
       })
    }
-
    //endregion
 }

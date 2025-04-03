@@ -7,6 +7,7 @@ import {
     ITicketStatusesRights
 } from '~connectors/glpi/types'
 
+
 /**
  * @param {number} id
  * @param {string} username
@@ -14,6 +15,19 @@ import {
 export class GetImagePreviewParams {
     @ApiProperty()
     id: number
+
+    @ApiProperty()
+    username: string
+}
+
+
+/**
+ * @param {number[]} id
+ * @param {string} username
+ */
+export class GetImagesPreviewParams {
+    @ApiProperty()
+    id: string
 
     @ApiProperty()
     username: string

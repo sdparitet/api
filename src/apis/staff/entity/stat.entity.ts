@@ -31,7 +31,11 @@ export class Staff_Stat {
    // noinspection JSUnusedLocalSymbols
    @ManyToOne(
       type => Staff_Position,
-      product => product.stats
+      product => product.stats,
+      {
+         onDelete: 'CASCADE',
+         orphanedRowAction: 'nullify',
+      }
    )
    @JoinColumn()
    position: Staff_Position;
@@ -44,6 +48,7 @@ export class Staff_Stat {
       category => category.stats,
    )
    category: Staff_Category;
+
    @Column({ nullable: false })
    categoryId: number;
 }

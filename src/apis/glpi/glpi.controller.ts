@@ -42,12 +42,17 @@ import {
    GetTicketsMembersRequest,
    SetAgreementStatusRequest,
    GetAgreementInfoResponse,
-   CreateAgreementRequest, SetTicketCategoryRequest,
+   CreateAgreementRequest, SetTicketCategoryRequest, AgreementTicketsResponse,
 } from '~glpi/dto/post-request-dto'
 import { Response } from "express"
 
 import { GLPI_DB_CONNECTION } from '~root/src/constants'
-import { GetAgreementUserParams, GetImagePreviewParams, GetUserAccessResponse } from "~glpi/dto/get-request-dto"
+import {
+   GetAgreementUserParams,
+   GetImagePreviewParams,
+   GetImagesPreviewParams,
+   GetUserAccessResponse,
+} from '~glpi/dto/get-request-dto'
 import { FilesInterceptor } from "@nestjs/platform-express"
 import { Portal_Roles } from "~roles/portal.roles"
 
@@ -76,6 +81,33 @@ export class GLPI_Controller {
     @ApiResponse({ type: [UserTicketsResponse] })
     guat(@Body() dto: RequestUsernameDto, @Res() res: Response) {
         return this.glpiService.GetUserAssignTickets(dto, res)
+    }
+
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+    @Post("/GetUserAgreementsTickets")
+    @Header("content-type", "application/json")
+    @ApiBody({ required: false, type: RequestUsernameDto })
+    @ApiResponse({ type: [AgreementTicketsResponse] })
+    guagt(@Body() dto: RequestUsernameDto, @Res() res: Response) {
+        return this.glpiService.GetUserAgreementsTickets(dto, res)
+    }
+
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+    @Post("/GetUserGroupsTickets")
+    @Header("content-type", "application/json")
+    @ApiBody({ required: false, type: RequestUsernameDto })
+    @ApiResponse({ type: [AgreementTicketsResponse] })
+    gugt(@Body() dto: RequestUsernameDto, @Res() res: Response) {
+        return this.glpiService.GetUserGroupsTickets(dto, res)
+    }
+
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+    @Post("/GetCultureTickets")
+    @Header("content-type", "application/json")
+    @ApiBody({ required: false, type: RequestUsernameDto })
+    @ApiResponse({ type: [AgreementTicketsResponse] })
+    gct(@Body() dto: RequestUsernameDto, @Res() res: Response) {
+        return this.glpiService.GetCultureTickets(dto, res)
     }
 
     @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
@@ -351,6 +383,14 @@ export class GLPI_Controller {
     @ApiResponse({ type: [ResponseGetImagePreviewResponse] })
     gip(@Query() params: GetImagePreviewParams, @Res() res: Response) {
         return this.glpiService.GetImagePreview(params, res)
+    }
+
+    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+    @Get("/GetImagesPreview")
+    @Header("content-type", "application/json; charset=utf-8")
+    @ApiResponse({ type: [GetImagesPreviewParams] })
+    gisp(@Query() params: GetImagesPreviewParams, @Res() res: Response) {
+        return this.glpiService.GetImagesPreview(params, res)
     }
 
     @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))

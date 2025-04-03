@@ -1,17 +1,17 @@
-import { HttpStatus, Inject, Injectable } from "@nestjs/common"
-import { InjectDataSource, InjectRepository } from "@nestjs/typeorm"
-import { FORMS_DB_CONNECTION, GLPI_DB_CONNECTION } from "~root/src/constants"
-import { DataSource, In, Repository } from "typeorm"
-import { CACHE_MANAGER } from "@nestjs/cache-manager"
-import { Cache } from "cache-manager"
-import { Response } from "express"
-import { Form } from "~form/entity/form.entity"
-import { GetFormsParams, RequestGlpiSelectDto } from "~form/dto/get-request-dto"
-import { AnswerDto } from "~form/dto/post-request-dto"
-import { Field, FieldType } from "~form/entity/field.entity"
-import { Template } from "~form/entity/template.entity"
-import { CompareType, ConditionLogic, Filter, FilterCompareType, PayloadType, SingleFilter } from "~form/types"
-import { GLPI } from "~root/src/connectors/glpi/glpi-api.connector"
+import { HttpStatus, Inject, Injectable } from '@nestjs/common'
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
+import { FORMS_DB_CONNECTION, GLPI_DB_CONNECTION } from '~root/src/constants'
+import { DataSource, In, Repository } from 'typeorm'
+import { CACHE_MANAGER } from '@nestjs/cache-manager'
+import { Cache } from 'cache-manager'
+import { Response } from 'express'
+import { Form } from '~form/entity/form.entity'
+import { GetFormsParams, RequestGlpiSelectDto } from '~form/dto/get-request-dto'
+import { AnswerDto } from '~form/dto/post-request-dto'
+import { Field, FieldType } from '~form/entity/field.entity'
+import { Template } from '~form/entity/template.entity'
+import { CompareType, ConditionLogic, Filter, FilterCompareType, PayloadType, SingleFilter } from '~form/types'
+import { GLPI } from '~root/src/connectors/glpi/glpi-api.connector'
 
 
 @Injectable()
@@ -67,7 +67,7 @@ export class Form_Service {
                const ret = (await this.formRep.find({
                   where: {
                      id: id,
-                     is_active: In(params.show_inactive && params.show_inactive.toLowerCase() === 'true' ? [true, false] : [true])
+                     is_active: In(params.show_inactive && params.show_inactive.toLowerCase() === 'true' ? [true, false] : [true]),
                   },
                }))
 
@@ -83,10 +83,9 @@ export class Form_Service {
             const cachedData: string = await this.cacheService.get('forms')
             if (cachedData) {
                forms = JSON.parse(cachedData)
-               // res.status(HttpStatus.OK).json(JSON.parse(cachedData))
             } else {
                const queryBuilder = this.formRep.createQueryBuilder('form')
-                  .select(['form.id', 'form.title', 'form.icon', 'form.description', 'form.is_active', 'form.profiles'])
+               .select(['form.id', 'form.title', 'form.icon', 'form.description', 'form.is_active', 'form.profiles'])
                if (params.show_inactive && params.show_inactive.toLowerCase() === 'true') {
                   queryBuilder.where('form.is_active IN (:...isActive)', { isActive: [true, false] })
                } else {
@@ -230,7 +229,7 @@ export class Form_Service {
    async GetFormTemplates(id: number, res: Response) {
       const templates = await this.templateRep.find({
          where: { formId: id },
-         relations: ['form']
+         relations: ['form'],
       })
 
       res.status(HttpStatus.OK).json(templates)
@@ -272,14 +271,43 @@ export class Form_Service {
             case FieldType.time:
                label = dayjs(value).utc().format('HH:mm')
                break
+            case FieldType.checkbox:
+               label = ''
+               break
             default:
-               field.values.map(item => {
-                  if (item.value.toString() === value) {
-                     label = item.label
-                  }
-               })
+               if (field.values === null) {
+                  label = ''
+               } else {
+                  field.values.map(item => {
+                     if (item.value.toString() === value) {
+                        label = item.label
+                     }
+                  })
+               }
+
          }
       }
+      return label
+   }
+
+   async CheckboxReplacer(form: Form, fieldId: string, value: {[p: number|string]: boolean}): Promise<string> {
+      const findField = () => {
+         for (const block of Object.values(form.blocks)) {
+            for (const field of block.fields) {
+               if (field.id.toString() === fieldId) {
+                  return field
+               }
+            }
+         }
+         return null
+      }
+      const field = findField()
+
+      let label = 'Н/Д'
+      if (field !== null) {
+         label = field.values.filter((item: { [key: string]: any }) => value[item.value]).map((item: { [key: string]: any }) => item.label).join(', ')
+      }
+
       return label
    }
 
@@ -362,15 +390,22 @@ export class Form_Service {
          for (const template of validTemplates) {
             const payload: PayloadType = {
                // _users_id_recipient: await glpi.GetUserId(dto.username),
-               _users_id_requester: await glpi.GetUserId(dto.username)
+               _users_id_requester: await glpi.GetUserId(dto.username),
             }
             for (const key in template.data) {
-               if (typeof template.data[key] === "string") {
+               if (typeof template.data[key] === 'string') {
                   const matches = [...template.data[key].matchAll(/(?<full>##q_(?<id>\d*)##)/g)]
                   let fieldValue = template.data[key]
                   for (const match of matches) {
                      if (match.groups.id in dto.data) {
                         fieldValue = fieldValue.replace(match.groups.full, dto.data[match.groups.id])
+                     }
+                  }
+
+                  const checkboxMatches = [...template.data[key].matchAll(/(?<full>##cb(?<column>_?[cr])?_(?<id>\d*)##)/g)]
+                  for (const match of checkboxMatches) {
+                     if (match.groups.id in dto.data) {
+                        fieldValue = fieldValue.replace(match.groups.full, await this.CheckboxReplacer(form, match.groups.id, dto.data[match.groups.id]))
                      }
                   }
 
@@ -383,7 +418,7 @@ export class Form_Service {
 
                   const timeMatches = [...template.data[key].matchAll(/(?<full>##t_(?<minus>-?)(?<number>\d+)(?<type>[Mdhm])(?<readable>_r)?##)/g)]
                   for (const match of timeMatches) {
-                     fieldValue = fieldValue.replace(match.groups.full, await this.TimeReplacer(match.groups.minus === "-", Number(match.groups.number), match.groups.type, !!match.groups.readable))
+                     fieldValue = fieldValue.replace(match.groups.full, await this.TimeReplacer(match.groups.minus === '-', Number(match.groups.number), match.groups.type, !!match.groups.readable))
                   }
 
                   const authorMatches = [...template.data[key].matchAll(/(?<full>##(?<sel>s_)?author##)/g)]

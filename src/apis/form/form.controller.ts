@@ -12,7 +12,6 @@ import {
 import {Response} from "express";
 import {Portal_Roles} from "~roles/portal.roles";
 import { JwtService } from '@nestjs/jwt'
-import { RequestUsernameDto } from '~glpi/dto/post-request-dto'
 
 @ApiTags(FORMS_DB_CONNECTION)
 @Controller("form")

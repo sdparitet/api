@@ -85,6 +85,11 @@ export class UserTicketsResponse {
     time_to_resolve: string
 }
 
+export class AgreementTicketsResponse extends UserTicketsResponse {
+   @ApiProperty()
+   need_agreement: number
+}
+
 /**
  * @param {number} ticket_id
  * @param {string} name

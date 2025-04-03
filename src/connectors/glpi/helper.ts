@@ -89,9 +89,9 @@ export class Helper {
                         canCreateFollowupsInMyGroups: byteMask[2] === '1',
                         canChangeAnyFollowups: byteMask[3] === '1',
                         canDeleteFollowups: byteMask[9] === '1',
-                        canCreateFollowups: byteMask[11] === '1',
-                        canChangeFollowups: byteMask[12] === '1',
-                        canViewPublicFollowups: byteMask[13] === '1',
+                        canCreateFollowups: byteMask[10] === '1',
+                        canChangeFollowups: byteMask[11] === '1',
+                        canViewPublicFollowups: byteMask[12] === '1',
                     } as IFollowupRights
                 } else {
                     return {
