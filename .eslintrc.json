@@ -18,7 +18,8 @@
       "plugin:@typescript-eslint/recommended-requiring-type-checking",
       "plugin:import/errors",
       "plugin:import/warnings",
-      "plugin:import/typescript"
+      "plugin:import/typescript",
+      "plugin:nestjs/recommended"
    ],
    "parser": "@typescript-eslint/parser",
    "parserOptions": {
@@ -300,13 +301,6 @@
       "react/jsx-no-useless-fragment": "error", // Disallow unnecessary fragments,
       "react/jsx-pascal-case": "error", // Enforce PascalCase for user-defined JSX components
       "react-hooks/rules-of-hooks": "error",
-      "react-hooks/exhaustive-deps": "warn",
-
-
-      "nestjs/deprecated-api-modules": "warn",
-      "nestjs/parse-int-pipe": "warn",
-      "nestjs/use-dependency-injection": "warn",
-      "nestjs/use-validation-pipe": "warn",
-      "react-refresh/only-export-components": "warn"
+      "react-hooks/exhaustive-deps": "warn"
    }
 }
