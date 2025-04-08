@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
 import { ApiHideProperty } from '@nestjs/swagger'
 import { KPI_DB_CONNECTION } from '~root/src/constants';

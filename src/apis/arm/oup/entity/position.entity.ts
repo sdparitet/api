@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, OneToMany } from 'typeorm';
 import { KPI_DB_CONNECTION } from '~root/src/constants';
 import { Oup_Group } from '~arm/oup/entity/group.entity';
