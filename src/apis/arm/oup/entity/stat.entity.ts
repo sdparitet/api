@@ -1,7 +1,7 @@
 import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
 import { KPI_DB_CONNECTION } from '~root/src/constants';
-import { Staff_Position } from '~staff/entity/position.entity';
-import { Staff_Category } from '~staff/entity/category.entity';
+import { Oup_Position } from '~arm/oup/entity/position.entity';
+import { Oup_Category } from '~arm/oup/entity/category.entity';
 
 
 /**
@@ -9,12 +9,12 @@ import { Staff_Category } from '~staff/entity/category.entity';
  * @param {number} year
  * @param {number} month
  * @param {number} value
- * @param {Staff_Position} product
- * @param {Staff_Category} category
+ * @param {Oup_Position} product
+ * @param {Oup_Category} category
  */
 @Entity({ database: KPI_DB_CONNECTION })
-@Unique('cat_position_year_month.kp', ['category', 'position', 'year', 'month'])
-export class Staff_Stat {
+@Unique('oup_cat_position_year_month.kp', ['category', 'position', 'year', 'month'])
+export class Oup_Stat {
 
    @PrimaryGeneratedColumn({ unsigned: true, zerofill: true })
    id: number;
@@ -30,7 +30,7 @@ export class Staff_Stat {
 
    // noinspection JSUnusedLocalSymbols
    @ManyToOne(
-      type => Staff_Position,
+      type => Oup_Position,
       product => product.stats,
       {
          onDelete: 'CASCADE',
@@ -38,16 +38,16 @@ export class Staff_Stat {
       }
    )
    @JoinColumn()
-   position: Staff_Position;
+   position: Oup_Position;
    @Column({ nullable: false })
    positionId: number;
 
    // noinspection JSUnusedLocalSymbols
    @ManyToOne(
-      type => Staff_Category,
+      type => Oup_Category,
       category => category.stats,
    )
-   category: Staff_Category;
+   category: Oup_Category;
 
    @Column({ nullable: false })
    categoryId: number;

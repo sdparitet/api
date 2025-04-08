@@ -393,13 +393,13 @@ export class GLPI_Controller {
         return this.glpiService.GetImagesPreview(params, res)
     }
 
-    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
-    @Get("/test")
-    @Header("content-type", "application/json; charset=utf-8")
-    // @Header("Suspend-Reauth", "1")
-    test(@Query() params: any, @Res() res: Response) {
-        return this.glpiService.Test(res, params)
-    }
+    // @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+    // @Get("/test")
+    // @Header("content-type", "application/json; charset=utf-8")
+    // // @Header("Suspend-Reauth", "1")
+    // test(@Query() params: any, @Res() res: Response) {
+    //     return this.glpiService.Test(res, params)
+    // }
 
     // endregion
 }

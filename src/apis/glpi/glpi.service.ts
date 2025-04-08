@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Injectable, HttpStatus, Inject } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { DataSource } from 'typeorm'
@@ -36,7 +37,7 @@ import { GLPI } from '~root/src/connectors/glpi/glpi-api.connector'
 import { CACHE_MANAGER } from '@nestjs/cache-manager'
 import { Cache } from 'cache-manager'
 import { Sharp } from 'sharp'
-import * as sharp from 'sharp'
+import sharp from 'sharp'
 import * as mime from 'mime-types'
 import { PayloadType } from '~connectors/glpi/types'
 
@@ -312,6 +313,7 @@ export class GLPI_Service {
             let category: number | string | null
             try {
                category = ret.data.itilcategories_id.replaceAll('&gt;', '>')
+               // eslint-disable-next-line @typescript-eslint/no-unused-vars
             } catch (e) {
                if (ret.data.itilcategories_id === 0) {
                   category = null
@@ -914,12 +916,11 @@ export class GLPI_Service {
                   res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({status: 'error', message: 'File mime type not provided' })
                } else {
                   if (ret.mime.split('/').length > 0 && ret.mime.split('/')[0] === 'image') {
-                     const sharp = require('sharp')
-                     const image = await sharp(Buffer.from(ret.data, 'base64'))
-                     let compressedImageBuffer: Buffer | null = await this.CompressImage(image)
+                     const image = sharp(Buffer.from(ret.data, 'base64'))
+                     const compressedImageBuffer: Buffer | null = await this.CompressImage(image)
 
                      if (compressedImageBuffer !== null) {
-                        const compressedImage = await sharp(compressedImageBuffer)
+                        const compressedImage = sharp(compressedImageBuffer)
                         const compressedMeta = await compressedImage.metadata()
                         const bufferData = await compressedImage.toBuffer()
                         res.status(ret.status).json({
@@ -995,7 +996,7 @@ export class GLPI_Service {
       await this.GlpiApiWrapper(params.username, res, async (glpi) => {
          const ids = params.id.split(',').map(Number)
          if (ids.length > 0) {
-            let data = []
+            const data = []
             for (const id of ids) {
                let filename = 'unknown.file'
                const _ret = await this.glpi.query(`select filename
@@ -1007,8 +1008,7 @@ export class GLPI_Service {
 
                const ret = await glpi.DownloadDocument(id)
                if (ret.status === HttpStatus.OK) {
-                  const sharp = require('sharp')
-                  const image = await sharp(Buffer.from(ret.data, 'base64'))
+                  const image = sharp(Buffer.from(ret.data, 'base64'))
                   const meta = await image.metadata()
                   const buffer = await image.toBuffer()
                   data.push({

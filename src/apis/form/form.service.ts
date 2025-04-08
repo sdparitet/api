@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { HttpStatus, Inject, Injectable } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
 import { FORMS_DB_CONNECTION, GLPI_DB_CONNECTION } from '~root/src/constants'
@@ -12,6 +13,8 @@ import { Field, FieldType } from '~form/entity/field.entity'
 import { Template } from '~form/entity/template.entity'
 import { CompareType, ConditionLogic, Filter, FilterCompareType, PayloadType, SingleFilter } from '~form/types'
 import { GLPI } from '~root/src/connectors/glpi/glpi-api.connector'
+import dayjs, { extend, ManipulateType } from 'dayjs'
+import utc from 'dayjs/plugin/utc'; extend(utc);
 
 
 @Injectable()
@@ -78,7 +81,7 @@ export class Form_Service {
             }
          } else {
 
-            let forms: Form[] = []
+            let forms: Form[]
 
             const cachedData: string = await this.cacheService.get('forms')
             if (cachedData) {
@@ -113,7 +116,7 @@ export class Form_Service {
       return this.fieldRep.findOne({ where: { id: field_id } })
    }
 
-   async ApplyFilter(item: {}, filter: SingleFilter) {
+   async ApplyFilter(item: object, filter: SingleFilter) {
       const { type } = filter
       const key = Object.keys(filter).find(k => !['type', 'logic', 'filters'].includes(k))
       const value = filter[key]
@@ -161,7 +164,7 @@ export class Form_Service {
       }
    }
 
-   async FilterItem(item: {}, filters: Filter[]) {
+   async FilterItem(item: object, filters: Filter[]) {
       let result: boolean = undefined
 
       for (const filter of filters) {
@@ -178,7 +181,7 @@ export class Form_Service {
       return result
    }
 
-   async FilterData(data: {}[], filters: Filter[]) {
+   async FilterData(data: object[], filters: Filter[]) {
       const promises = data.map(async (item) => {
          const result = await this.FilterItem(item, filters)
          return { item, result }
@@ -194,7 +197,7 @@ export class Form_Service {
       } else {
          await this.GlpiApiWrapper('portal_reader', res, async (glpi) => {
             const field = await this.GetField(params.field_id)
-            let ret = await glpi.GetAllItems(field.values[0]['itemtype'] as string)
+            const ret = await glpi.GetAllItems(field.values[0]['itemtype'] as string)
 
             if ('filters' in field.values[0]) {
                ret.data = await this.FilterData(ret.data, field.values[0]['filters'])
@@ -240,19 +243,13 @@ export class Form_Service {
    //region [ Answer ]
    async GlpiSelectReplacer(glpi: GLPI, fieldId: string, value: string): Promise<string> {
       const field = await this.fieldRep.findOneBy({ id: Number(fieldId) })
-      const dayjs = require('dayjs')
-      const utc = require('dayjs/plugin/utc')
-      const timezone = require('dayjs/plugin/timezone')
-
-      dayjs.extend(utc)
-      dayjs.extend(timezone)
 
       let label = ''
       if (value === undefined || value === null) {
          label = 'Н/Д'
       } else {
          switch (field.type) {
-            case FieldType.glpi_select:
+            case FieldType.glpi_select: {
                const ret = await glpi.GetItem(field.values[0].itemtype.toString(), Number(value))
                label = field.values[0]['show_value_field'] ?
                   typeof field.values[0]['show_value_field'] === 'string' ?
@@ -262,6 +259,7 @@ export class Form_Service {
                      ret.data[field.values[0]['value_field']]
                      : field.values[0]['value_field'].map((key: any) => ret.data[key]).join(' ')
                break
+            }
             case FieldType.datetime:
                label = dayjs(value).utc().format('DD.MM.YYYY HH:mm')
                break
@@ -305,14 +303,14 @@ export class Form_Service {
 
       let label = 'Н/Д'
       if (field !== null) {
+         // eslint-disable-next-line @typescript-eslint/no-explicit-any
          label = field.values.filter((item: { [key: string]: any }) => value[item.value]).map((item: { [key: string]: any }) => item.label).join(', ')
       }
 
       return label
    }
 
-   async TimeReplacer(minus: boolean, number: number, type: string, readable: boolean = false) {
-      const dayjs = require('dayjs')
+   async TimeReplacer(minus: boolean, number: number, type: ManipulateType, readable: boolean = false) {
       const now = dayjs()
       if (minus) {
          return now.subtract(number, type).format(readable ? 'DD-MM-YYYY HH:mm:ss' : 'YYYY-MM-DDTHH:mm:ss.SSS[Z]')
@@ -326,7 +324,7 @@ export class Form_Service {
                            sela: string | undefined, a: string, selb: string | undefined, b: string) {
       const leftValue = source[left]
 
-      let result = undefined
+      let result
       if (logic === 1) {
          result = leftValue === value
       } else {
@@ -336,12 +334,12 @@ export class Form_Service {
       if (result === undefined) return 'Н/Д'
 
       if (result) {
-         if (!!sela) {
+         if (sela) {
             if (sela === 's') return this.GlpiSelectReplacer(glpi, a, source[a])
             else return source[a]
          } else return a
       } else {
-         if (!!selb) {
+         if (selb) {
             if (selb === 's') return this.GlpiSelectReplacer(glpi, b, source[b])
             else return source[b]
          } else return b
@@ -380,7 +378,7 @@ export class Form_Service {
                      if (!isMatch) isValid = false
                   }
                })
-               isValid && validTemplates.push(template)
+               if (isValid) validTemplates.push(template)
             } else {
                validTemplates.push(template)
             }
@@ -394,34 +392,34 @@ export class Form_Service {
             }
             for (const key in template.data) {
                if (typeof template.data[key] === 'string') {
-                  const matches = [...template.data[key].matchAll(/(?<full>##q_(?<id>\d*)##)/g)]
-                  let fieldValue = template.data[key]
+                  const matches = [...(template.data[key] as string).matchAll(/(?<full>##q_(?<id>\d*)##)/g)]
+                  let fieldValue = template.data[key] as string
                   for (const match of matches) {
                      if (match.groups.id in dto.data) {
                         fieldValue = fieldValue.replace(match.groups.full, dto.data[match.groups.id])
                      }
                   }
 
-                  const checkboxMatches = [...template.data[key].matchAll(/(?<full>##cb(?<column>_?[cr])?_(?<id>\d*)##)/g)]
+                  const checkboxMatches = [...(template.data[key] as string).matchAll(/(?<full>##cb(?<column>_?[cr])?_(?<id>\d*)##)/g)]
                   for (const match of checkboxMatches) {
                      if (match.groups.id in dto.data) {
                         fieldValue = fieldValue.replace(match.groups.full, await this.CheckboxReplacer(form, match.groups.id, dto.data[match.groups.id]))
                      }
                   }
 
-                  const glpiSelectMatches = [...template.data[key].matchAll(/(?<full>##sq_(?<id>\d*)##)/g)]
+                  const glpiSelectMatches = [...(template.data[key] as string).matchAll(/(?<full>##sq_(?<id>\d*)##)/g)]
                   for (const match of glpiSelectMatches) {
                      if (match.groups.id in dto.data) {
                         fieldValue = fieldValue.replace(match.groups.full, await this.GlpiSelectReplacer(glpi, match.groups.id, dto.data[match.groups.id]))
                      }
                   }
 
-                  const timeMatches = [...template.data[key].matchAll(/(?<full>##t_(?<minus>-?)(?<number>\d+)(?<type>[Mdhm])(?<readable>_r)?##)/g)]
+                  const timeMatches = [...(template.data[key] as string).matchAll(/(?<full>##t_(?<minus>-?)(?<number>\d+)(?<type>[Mdhm])(?<readable>_r)?##)/g)]
                   for (const match of timeMatches) {
-                     fieldValue = fieldValue.replace(match.groups.full, await this.TimeReplacer(match.groups.minus === '-', Number(match.groups.number), match.groups.type, !!match.groups.readable))
+                     fieldValue = fieldValue.replace(match.groups.full, await this.TimeReplacer(match.groups.minus === '-', Number(match.groups.number), match.groups.type as ManipulateType, !!match.groups.readable))
                   }
 
-                  const authorMatches = [...template.data[key].matchAll(/(?<full>##(?<sel>s_)?author##)/g)]
+                  const authorMatches = [...(template.data[key] as string).matchAll(/(?<full>##(?<sel>s_)?author##)/g)]
                   for (const match of authorMatches) {
                      const replacement = match.groups.sel
                         ? await glpi.GetUserFio(dto.username)
@@ -429,7 +427,7 @@ export class Form_Service {
                      fieldValue = fieldValue.replace(match.groups.full, String(replacement))
                   }
 
-                  const conditionMatches = [...template.data[key].matchAll(/(?<full>##cq_(?<left>\d+)\|(?<logic>[1,2])\|(?<value>[^|]+)\|(?<sela>[sv])?(?<a>\d+)\|(?<selb>[sv])?(?<b>\d+)##)/g)]
+                  const conditionMatches = [...(template.data[key] as string).matchAll(/(?<full>##cq_(?<left>\d+)\|(?<logic>[1,2])\|(?<value>[^|]+)\|(?<sela>[sv])?(?<a>\d+)\|(?<selb>[sv])?(?<b>\d+)##)/g)]
                   for (const match of conditionMatches) {
                      fieldValue = fieldValue.replace(match.groups.full, await this.ConditionReplacer(glpi, dto.data, match.groups.left, Number(match.groups.logic), match.groups.value, match.groups.sela, match.groups.a, match.groups.selb, match.groups.b))
                   }

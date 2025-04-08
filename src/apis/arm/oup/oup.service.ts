@@ -4,25 +4,25 @@ import { Repository, In } from "typeorm";
 import { Request } from 'express';
 
 import { getTokenData } from '~root/src/apis/helpers';
-import {  Staff_Category_Dto,  Staff_Category } from '~staff/entity/category.entity';
-import {  Staff_Group,  Staff_Group_Dto } from '~staff/entity/group.entity';
-import {  Staff_Position } from '~staff/entity/position.entity';
-import {  Staff_Stat } from '~staff/entity/stat.entity';
-import { STAFF_GetRequestDto } from '~staff/dto/get-request-dto';
-import { STAFF_PostRequestDto, STAFF_EditPosDto } from '~staff/dto/post-request-dto'
+import {  Oup_Category_Dto,  Oup_Category } from '~arm/oup/entity/category.entity';
+import {  Oup_Group,  Oup_Group_Dto } from '~arm/oup/entity/group.entity';
+import {  Oup_Position } from '~arm/oup/entity/position.entity';
+import {  Oup_Stat } from '~arm/oup/entity/stat.entity';
+import { OUP_GetRequestDto } from '~arm/oup/dto/get-request-dto';
+import { OUP_PostRequestDto, OUP_EditPosDto } from '~arm/oup/dto/post-request-dto'
 import { KPI_DB_CONNECTION } from '~root/src/constants';
 
 @Injectable()
-export class Staff_Service {
+export class Oup_Service {
    constructor(
-      @InjectRepository( Staff_Category, KPI_DB_CONNECTION)
-      private categoryRepository: Repository<Staff_Category>,
-      @InjectRepository( Staff_Group, KPI_DB_CONNECTION)
-      private groupRepository: Repository<Staff_Group>,
-      @InjectRepository( Staff_Position, KPI_DB_CONNECTION)
-      private positionRepository: Repository<Staff_Position>,
-      @InjectRepository( Staff_Stat, KPI_DB_CONNECTION)
-      private statRepository: Repository<Staff_Stat>,
+      @InjectRepository( Oup_Category, KPI_DB_CONNECTION)
+      private categoryRepository: Repository<Oup_Category>,
+      @InjectRepository( Oup_Group, KPI_DB_CONNECTION)
+      private groupRepository: Repository<Oup_Group>,
+      @InjectRepository( Oup_Position, KPI_DB_CONNECTION)
+      private positionRepository: Repository<Oup_Position>,
+      @InjectRepository( Oup_Stat, KPI_DB_CONNECTION)
+      private statRepository: Repository<Oup_Stat>,
    ) { }
 
    async getCategories(req: Request) {
@@ -34,7 +34,7 @@ export class Staff_Service {
       })).map(c => ({
          ...c,
          read: (userData.userRoles || []).includes(c.roleRead),
-      } as  Staff_Category_Dto))
+      } as  Oup_Category_Dto))
          .sort((a,b) => a.id - b.id)
    }
 
@@ -49,10 +49,10 @@ export class Staff_Service {
          ...g,
          read: (userData.userRoles || []).includes(g.roleRead),
          write: (userData.userRoles || []).includes(g.roleWrite),
-      } as  Staff_Group_Dto))
+      } as  Oup_Group_Dto))
    }
 
-   async GetStaff(dto: STAFF_GetRequestDto, req: Request) {
+   async GetStaff(dto: OUP_GetRequestDto, req: Request) {
       const userData = getTokenData(req)
       return await this.statRepository.find({
          relations: {
@@ -60,6 +60,7 @@ export class Staff_Service {
          },
          where: {
             year: dto.year,
+            categoryId: dto.categoryId,
             position: {
                group: {
                   roleRead: In(userData.userRoles || [])
@@ -69,7 +70,7 @@ export class Staff_Service {
       })
    }
 
-   async SetStaff(dto: Array<STAFF_PostRequestDto> /*, req: Request*/) {
+   async SetStaff(dto: Array<OUP_PostRequestDto> /*, req: Request*/) {
       // const userData = getTokenData(req)
       for (const d of dto) {
          const cat = await this.categoryRepository.findOne({
@@ -82,7 +83,7 @@ export class Staff_Service {
                id: d.position
             }
          })
-         const staff: Staff_Stat = {
+         const oup: Oup_Stat = {
             ...d,
             year: Number(d.year),
             value: Number(d.value),
@@ -94,25 +95,25 @@ export class Staff_Service {
 
          if (await this.statRepository.exists({
             where: {
-               year: staff.year,
-               categoryId: staff.categoryId,
-               positionId: staff.positionId,
-               month: staff.month
+               year: oup.year,
+               categoryId: oup.categoryId,
+               positionId: oup.positionId,
+               month: oup.month
             }
          })) {
             // update.push(kpi)
-            await this.statRepository.update({ year: staff.year, categoryId: staff.categoryId, positionId: staff.positionId, month: staff.month }, staff)
+            await this.statRepository.update({ year: oup.year, categoryId: oup.categoryId, positionId: oup.positionId, month: oup.month }, oup)
          }
          else {
             // insert.push(kpi)
-            await this.statRepository.insert(staff)
+            await this.statRepository.insert(oup)
          }
       }
 
       // await this.statRepository.upsert(upsert, ['date', 'productId'])
    }
 
-   async EditPosition(dto: Partial<STAFF_EditPosDto>) {
+   async EditPosition(dto: Partial<OUP_EditPosDto>) {
       const pos = await this.positionRepository.findOne({
          where: {
             id: dto.id || -1
@@ -142,7 +143,7 @@ export class Staff_Service {
       }
    }
 
-   async RemovePosition(dto: Partial<STAFF_EditPosDto>) {
+   async RemovePosition(dto: Partial<OUP_EditPosDto>) {
       const pos = await this.positionRepository.findOne({
          where: {
             id: dto.id || -1

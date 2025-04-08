@@ -29,7 +29,8 @@ async function start() {
         /** *************************************************************** **/
 
         .addTag('kpi', "Контроллер учёта значений KPI")
-        .addTag('staff', "Контроллер учёта статистики персонала")
+        .addTag('ARM OIT', "Контроллер учёта доступности услуг")
+        .addTag('ARM OUP', "Контроллер учёта статистики персонала")
         .addTag('stat', "Статистика")
         .addTag('glpi', "GLPI")
         .addTag('form', "Формы портала")
@@ -64,6 +65,7 @@ async function start() {
         "http://localhost:3311",
         "http://localhost:4242",
     ]
+   // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const corsOptionsDelegate = function (req: string, callback: (arg0: null, arg1: any) => void) {
         let corsOptions: { origin: boolean; };
         if (CORSAllowList.indexOf(req) !== -1) {

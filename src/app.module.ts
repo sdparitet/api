@@ -8,9 +8,10 @@ import {GLPI_DB_CONNECTION, FORMS_DB_CONNECTION, KPI_DB_CONNECTION, STAT_DB_CONN
 import {Kpi_Module} from '~kpi/kpi.module';
 import {LoggerMiddleware} from '~utils/loggerMiddleware';
 import {Stat_Module} from '~stat/stat.module';
-import {Staff_Module} from '~staff/staff.module';
+import {Oup_Module} from '~arm/oup/oup.module';
 import {GLPI_Module} from '~glpi/glpi.module';
 import {Form_Module} from "~root/src/apis/form/form.module";
+import { Arm_Module } from '~arm/oit/oit.module'
 
 @Module({
     controllers: [],
@@ -30,7 +31,8 @@ import {Form_Module} from "~root/src/apis/form/form.module";
             database: process.env.POSTGRES_DB,
             entities: [
                 __dirname + "/apis/kpi/entity/*.entity.{js,ts}",
-                __dirname + "/apis/staff/entity/*.entity.{js,ts}",
+                // __dirname + "/apis/staff/entity/*.entity.{js,ts}",
+                __dirname + "/apis/arm/entity/*.entity.{js,ts}",
             ],
             autoLoadEntities: true,
             logging: process.env.NODE_ENV === 'development' ? "all" : ["error"],
@@ -84,7 +86,8 @@ import {Form_Module} from "~root/src/apis/form/form.module";
         }),
 
         Kpi_Module,
-        Staff_Module,
+        Oup_Module,
+        Arm_Module,
         Stat_Module,
         GLPI_Module,
         Form_Module,

@@ -1,17 +1,17 @@
 import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, OneToMany } from 'typeorm';
 import { KPI_DB_CONNECTION } from '~root/src/constants';
-import { Staff_Group } from '~staff/entity/group.entity';
-import { Staff_Stat } from '~staff/entity/stat.entity';
+import { Oup_Group } from '~arm/oup/entity/group.entity';
+import { Oup_Stat } from '~arm/oup/entity/stat.entity';
 
 
 /**
  * @param {number} id
  * @param {string} name
- * @param {Staff_Stat[]} stats
- * @param {Staff_Group} group
+ * @param {Oup_Stat[]} stats
+ * @param {Oup_Group} group
  */
 @Entity({ database: KPI_DB_CONNECTION })
-export class Staff_Position {
+export class Oup_Position {
 
    @PrimaryGeneratedColumn({ unsigned: true, zerofill: true })
    id: number;
@@ -21,21 +21,21 @@ export class Staff_Position {
 
    // noinspection JSUnusedLocalSymbols
    @OneToMany(
-      type => Staff_Stat,
+      type => Oup_Stat,
       stats => stats.position,
       {
          cascade: true,
          orphanedRowAction: 'nullify',
       }
    )
-   stats: Staff_Stat[];
+   stats: Oup_Stat[];
 
    // noinspection JSUnusedLocalSymbols
    @ManyToOne(
-      type => Staff_Group,
+      type => Oup_Group,
       group => group.positions,
    )
-   group: Staff_Group;
+   group: Oup_Group;
 
    @Column({ nullable: false })
    groupId: number;

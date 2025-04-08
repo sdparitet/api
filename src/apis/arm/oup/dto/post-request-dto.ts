@@ -3,8 +3,8 @@
  * @param {number} category
  * @param {number} position
  */
-export class STAFF_PostBasicDto {
-   constructor(model: STAFF_PostBasicDto) {
+export class OUP_PostBasicDto {
+   constructor(model: OUP_PostBasicDto) {
       this.id = model.id || -1
       this.category = model.category
       this.position = model.position
@@ -19,8 +19,8 @@ export class STAFF_PostBasicDto {
  * @param {number} groupId
  * @param {string} name
  */
-export class STAFF_EditPosDto {
-   constructor(model: STAFF_EditPosDto) {
+export class OUP_EditPosDto {
+   constructor(model: OUP_EditPosDto) {
       this.id = model.id || -1
       this.groupId = model.groupId
       this.name = model.name
@@ -39,8 +39,8 @@ export class STAFF_EditPosDto {
  * @param {number} month
  * @param {string} value
  */
-export class STAFF_PostRequestDto extends STAFF_PostBasicDto {
-   constructor(model: STAFF_PostRequestDto) {
+export class OUP_PostRequestDto extends OUP_PostBasicDto {
+   constructor(model: OUP_PostRequestDto) {
       super(model)
       this.year = model.year
       this.month = model.month
