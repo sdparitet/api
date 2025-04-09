@@ -3,13 +3,13 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 
 
 /**
- * @param {number} id
+ * @param {number[]} id
  */
 export class Oit_RemoveAccidentDto {
    constructor(model: Oit_RemoveAccidentDto) {
       this.id = model.id
    }
-   readonly id: number
+   readonly id: number[]
 }
 
 /**
