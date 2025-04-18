@@ -1,4 +1,4 @@
 export const Oup_Roles = {
-    OUP_USER: 'STAFF_User',
-    OUP_ADMIN: 'STAFF_Admin',
+    OUP_USER: 'OUP_User',
+    OUP_ADMIN: 'OUP_Admin',
 } as const
