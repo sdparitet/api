@@ -5,7 +5,7 @@ import { Request } from 'express';
 
 import { getTokenData } from '~root/src/apis/helpers';
 import { OIT_GetAccidentsDto } from '~arm/oit/dto/get-dto';
-import { Oit_AddAccidentDto } from '~arm/oit/dto/post-dto'
+import { Oit_AddAccidentDto, Oit_RemoveAccidentDto } from '~arm/oit/dto/post-dto'
 import { KPI_DB_CONNECTION } from '~root/src/constants';
 import { Oit_Group, Oit_Group_Dto } from '~arm/oit/entity/group.entity'
 import { Oit_Accident } from '~arm/oit/entity/accident.entity'
@@ -87,9 +87,15 @@ export class Oit_Service {
       }
    }
 
-   async removeAccident(dto: Partial<Oit_AddAccidentDto>) {
-      await this.accidentRepository.delete({
-         id: dto.id || -1
+   async removeAccident(dto: Oit_RemoveAccidentDto) {
+      this.accidentRepository.find({
+         where: {
+            id: In(dto.id || [])
+         }
+      }).then(async accidents => {
+         for (const acc of accidents) {
+            await this.accidentRepository.delete({ id: acc.id })
+         }
       })
    }
 

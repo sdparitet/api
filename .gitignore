@@ -10,7 +10,7 @@
 /node_modules/
 /dist/
 /.env.development
-/.env.api
+/.env.production
 /.env.docker
 /logs
 /*.log
@@ -21,3 +21,4 @@
 /_template/
 /_bckp/
 
+/.env.production

@@ -21,7 +21,7 @@ services:
       - "host.docker.internal:host-gateway"
       - "portal.paritet.su notif.portal.paritet.su:192.168.10.25"
     env_file:
-      - .env.api
+      - .env.production
     volumes:
       - api:/app/dist
     ports:
