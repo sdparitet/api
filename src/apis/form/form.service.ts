@@ -347,6 +347,7 @@ export class Form_Service {
    }
 
    async Answer(dto: AnswerDto, res: Response) {
+      console.log('Answer on ', dto.form_id ,' from ', dto.username, '. Data:\n', dto.data)
       await this.GlpiApiWrapper('portal_reader', res, async (glpi) => {
          const form = await this.formRep.findOneBy({ id: dto.form_id })
 
@@ -439,6 +440,10 @@ export class Form_Service {
             }
 
             payloads.push(payload)
+         }
+
+         if (payloads.length > 1) {
+            console.warn('Warning more then 1 payload:\n%s', JSON.stringify(payloads))
          }
 
          await this.GlpiApiWrapper(dto.username, res, async (_glpi: GLPI) => {

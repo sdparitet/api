@@ -1,6 +1,6 @@
 {
     "name": "api",
-    "version": "3.0.72",
+    "version": "3.0.76",
     "author": "Mozhaev.AI",
     "private": true,
     "scripts": {
@@ -13,7 +13,7 @@
         "start:debug": "cross-env NODE_ENV=development NEST_DEBUG=true nest start --debug --watch",
         "start:prod": "node dist/main",
         "typeorm": "typeorm-ts-node-esm"
-        },
+    },
     "dependencies": {
         "@nestjs/axios": "^4.0.0",
         "@nestjs/cache-manager": "^3.0.1",
@@ -47,7 +47,7 @@
         "swagger-ui-express": "^5.0.1",
         "typeorm": "^0.3.22",
         "uuid": "^9.0.1"
-        },
+    },
     "devDependencies": {
         "@nestjs/cli": "^10.2.1",
         "@nestjs/schematics": "^10.2.3",
@@ -66,5 +66,5 @@
         "ts-node": "^10.9.2",
         "tsconfig-paths": "^4.2.0",
         "typescript": "^5.8.3"
-        }
+    }
 }

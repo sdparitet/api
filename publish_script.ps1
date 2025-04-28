@@ -130,6 +130,11 @@ docker build --pull --rm -f "Dockerfile" -t ${image_name}:latest -t ${image_name
 # Publish
 $publish = Read-Host -Prompt "`nPublish? [(Y)es/(N)o]"
 $pass = @('Y','y','Yes','YES','yes')
+
+if ($publish -eq "") {
+   $publish = "Y"
+}
+
 if ($pass -contains $publish)
 {
    Write-output '`nPublishing...'

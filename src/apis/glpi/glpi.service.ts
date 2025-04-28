@@ -169,7 +169,7 @@ export class GLPI_Service {
             where t.id in (select tickets_id
                            from glpi_groups_tickets
                            where groups_id in (select groups_id from glpi_groups_users where users_id = ${glpi.userId}))
-              and is_deleted = 0;`)
+              and is_deleted = 0 order by t.id desc;`)
 
          if (ret) res.status(HttpStatus.OK).json(ret)
          else res.status(HttpStatus.BAD_REQUEST)
@@ -737,8 +737,8 @@ export class GLPI_Service {
 
          if (!ret || ret.length === 0) res.status(HttpStatus.BAD_REQUEST).json([])
          else {
-            const pay = [{ id: ret[0].id }]
-            await glpi.DeleteItems('Ticket_User', pay)
+            const payload = [{ id: ret[0].id }]
+            await glpi.DeleteItems('Ticket_User', payload)
             res.status(HttpStatus.OK).json([])
          }
       })
