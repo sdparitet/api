@@ -27,6 +27,7 @@
       "~utils/*"        : ["src/utils/*"],
 
       "~kpi/*"          : ["src/apis/kpi/*"],
+      "~ldap/*"         : ["src/apis/ldap/*"],
       "~arm/*"          : ["src/apis/arm/*"],
       "~stat/*"         : ["src/apis/stat/*"],
       "~glpi/*"         : ["src/apis/glpi/*"],

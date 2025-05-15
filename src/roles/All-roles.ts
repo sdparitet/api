@@ -1,3 +1,4 @@
+import { LDAP_Roles } from '~roles/ldap.roles'
 import {Kpi_Roles} from './kpi.roles';
 import {Oup_Roles} from '~roles/oup.roles';
 import {Stat_Roles} from '~roles/stat.roles';
@@ -14,6 +15,7 @@ export const GlobalRoles = {
 export const AllRoles = {
     ...GlobalRoles,
     ...Kpi_Roles,
+    ...LDAP_Roles,
     ...Oup_Roles,
     ...Oit_Roles,
     ...Stat_Roles,
