@@ -2,11 +2,11 @@ import {MiddlewareConsumer, Module, NestModule} from "@nestjs/common";
 import {JwtService} from '@nestjs/jwt';
 import {ConfigModule} from '@nestjs/config';
 import {TypeOrmModule} from '@nestjs/typeorm';
-import { LDAP_Module } from '~ldap/ldap.module'
 
 import {GLPI_DB_CONNECTION, FORMS_DB_CONNECTION, KPI_DB_CONNECTION, STAT_DB_CONNECTION} from '~root/src/constants';
 
 import {Kpi_Module} from '~kpi/kpi.module';
+import { LDAP_Module } from '~ldap/ldap.module'
 import {LoggerMiddleware} from '~utils/loggerMiddleware';
 import {Stat_Module} from '~stat/stat.module';
 import {Oup_Module} from '~arm/oup/oup.module';

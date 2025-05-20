@@ -6,7 +6,7 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm install --silent
 
-ENV NODE_ENV=production
+ENV NODE_ENV=test
 
 COPY . ./
 
