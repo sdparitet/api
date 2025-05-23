@@ -62,6 +62,8 @@ export class Oup_Service {
             year: dto.year,
             categoryId: dto.categoryId,
             position: {
+               id: dto.positionId,
+               groupId: dto.groupId,
                group: {
                   roleRead: In(userData.userRoles || [])
                }
