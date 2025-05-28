@@ -14,7 +14,9 @@ import { Template } from '~form/entity/template.entity'
 import { CompareType, ConditionLogic, Filter, FilterCompareType, PayloadType, SingleFilter } from '~form/types'
 import { GLPI } from '~root/src/connectors/glpi/glpi-api.connector'
 import dayjs, { extend, ManipulateType } from 'dayjs'
-import utc from 'dayjs/plugin/utc'; extend(utc);
+import utc from 'dayjs/plugin/utc'
+
+extend(utc)
 
 
 @Injectable()
@@ -63,43 +65,31 @@ export class Form_Service {
       const ttl = 60 * 60 * 24 * 14  // 2 недели
       await this.GlpiApiWrapper(username, res, async (glpi) => {
          if (id) {
-            const cachedData: string = await this.cacheService.get(`form_${id}`)
-            if (cachedData) {
-               res.status(HttpStatus.OK).json(JSON.parse(cachedData))
-            } else {
-               const ret = (await this.formRep.find({
-                  where: {
-                     id: id,
-                     is_active: In(params.show_inactive && params.show_inactive.toLowerCase() === 'true' ? [true, false] : [true]),
-                  },
-               }))
+            const ret = (await this.formRep.find({
+               where: {
+                  id: id,
+                  is_active: In(params.show_inactive && params.show_inactive.toLowerCase() === 'true' ? [true, false] : [true]),
+               },
+            }))
 
-               await this.cacheService.set(`form_${id}`, JSON.stringify(ret), ttl)
+            await this.cacheService.set(`form_${id}`, JSON.stringify(ret), ttl)
 
-               if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret)
-               else res.status(HttpStatus.BAD_REQUEST).json([])
-            }
+            if (ret && ret.length > 0) res.status(HttpStatus.OK).json(ret)
+            else res.status(HttpStatus.BAD_REQUEST).json([])
+
          } else {
 
             let forms: Form[]
 
-            const cachedData: string = await this.cacheService.get('forms')
-            if (cachedData) {
-               forms = JSON.parse(cachedData)
-            } else {
-               const queryBuilder = this.formRep.createQueryBuilder('form')
+            const queryBuilder = this.formRep.createQueryBuilder('form')
                .select(['form.id', 'form.title', 'form.icon', 'form.description', 'form.is_active', 'form.profiles'])
-               if (params.show_inactive && params.show_inactive.toLowerCase() === 'true') {
-                  queryBuilder.where('form.is_active IN (:...isActive)', { isActive: [true, false] })
-               } else {
-                  queryBuilder.where('form.is_active = :isActive', { isActive: true })
-               }
-               const ret = await queryBuilder.orderBy('id').getMany()
-
-               await this.cacheService.set(`forms`, JSON.stringify(ret), ttl)
-
-               forms = ret
+            if (params.show_inactive && params.show_inactive.toLowerCase() === 'true') {
+               queryBuilder.where('form.is_active IN (:...isActive)', { isActive: [true, false] })
+            } else {
+               queryBuilder.where('form.is_active = :isActive', { isActive: true })
             }
+            forms = await queryBuilder.orderBy('id').getMany()
+
 
             const userInfo = await glpi.GetUserProfile()
             forms = forms.filter(form => form.profiles === null || form.profiles.length === 0 || form.profiles.includes(userInfo.profile.id))
@@ -288,7 +278,7 @@ export class Form_Service {
       return label
    }
 
-   async CheckboxReplacer(form: Form, fieldId: string, value: {[p: number|string]: boolean}): Promise<string> {
+   async CheckboxReplacer(form: Form, fieldId: string, value: { [p: number | string]: boolean }): Promise<string> {
       const findField = () => {
          for (const block of Object.values(form.blocks)) {
             for (const field of block.fields) {
@@ -304,7 +294,9 @@ export class Form_Service {
       let label = 'Н/Д'
       if (field !== null) {
          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-         label = field.values.filter((item: { [key: string]: any }) => value[item.value]).map((item: { [key: string]: any }) => item.label).join(', ')
+         label = field.values.filter((item: { [key: string]: any }) => value[item.value]).map((item: {
+            [key: string]: any
+         }) => item.label).join(', ')
       }
 
       return label
@@ -347,7 +339,7 @@ export class Form_Service {
    }
 
    async Answer(dto: AnswerDto, res: Response) {
-      console.log('Answer on ', dto.form_id ,' from ', dto.username, '. Data:\n', dto.data)
+      console.log('Answer on ', dto.form_id, ' from ', dto.username, '. Data:\n', dto.data)
       await this.GlpiApiWrapper('portal_reader', res, async (glpi) => {
          const form = await this.formRep.findOneBy({ id: dto.form_id })
 
@@ -447,13 +439,13 @@ export class Form_Service {
          }
 
          await this.GlpiApiWrapper(dto.username, res, async (_glpi: GLPI) => {
-             const ret = await _glpi.AddItems('Ticket', payloads)
+            const ret = await _glpi.AddItems('Ticket', payloads)
 
-             if ([201, 207].includes(ret.status)) {
-                 res.status(ret.status).json(ret.data)
-             } else {
-                 res.status(ret.status).json({ id: ret.data[0], message: ret.data[1] })
-             }
+            if ([201, 207].includes(ret.status)) {
+               res.status(ret.status).json(ret.data)
+            } else {
+               res.status(ret.status).json({ id: ret.data[0], message: ret.data[1] })
+            }
          })
       })
    }

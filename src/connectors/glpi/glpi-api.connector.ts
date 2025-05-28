@@ -344,16 +344,22 @@ export class GLPI {
       const { status, data } = await this.UploadDocument(files)
       const userId = asUser ? await this.GetUserId(asUser) : this.userId
 
-      const payload: PayloadType[] = data.map((file: any) => ({
-         documents_id: file.id,
-         itemtype: 'Ticket',
-         items_id: ticketId,
-         users_id: userId,
-      }))
+      try {
+         const payload: PayloadType[] = data.map((file: any) => ({
+            documents_id: file.id,
+            itemtype: 'Ticket',
+            items_id: ticketId,
+            users_id: userId,
+         }))
 
-      await this.AddItems('Document_Item', payload)
+         await this.AddItems('Document_Item', payload)
 
-      return { status, ticket_id: ticketId, data }
+         return { status, ticket_id: ticketId, data }
+      }
+      catch (e) {
+         console.log('[ERROR] Data is not defined', data, '\n',e)
+         return { status: HttpStatus.INTERNAL_SERVER_ERROR, ticket_id: ticketId, data: data }
+      }
    }
 
    async DownloadDocument(docId: number) {
