@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import { Column, Entity, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn, OneToMany, ManyToOne } from 'typeorm';
+import { Oup_Location } from '~arm/oup/entity/location.entity'
 import { KPI_DB_CONNECTION } from '~root/src/constants';
 import { Oup_Position } from '~arm/oup/entity/position.entity';
 
@@ -23,6 +24,7 @@ export interface Oup_Group_Dto {
  * @param {string} name
  * @param {string} roleRead
  * @param {string} roleWrite
+ * @param {Oup_Location} location
  * @param {Oup_Position[]} positions
  */
 @Entity({ database: KPI_DB_CONNECTION })
@@ -39,6 +41,16 @@ export class Oup_Group {
 
    @Column({ type: 'varchar', default: 'STAFF_0W' })
    roleWrite: string;
+
+   // noinspection JSUnusedLocalSymbols
+   @ManyToOne(
+      type => Oup_Location,
+      location => location.groups,
+   )
+   location: Oup_Location;
+
+   @Column({ nullable: false, default: 1 })
+   locationId: number;
 
    // noinspection JSUnusedLocalSymbols
    @OneToMany(

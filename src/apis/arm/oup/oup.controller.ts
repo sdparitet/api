@@ -14,6 +14,13 @@ export class Oup_Controller {
    constructor(private staffService: Oup_Service) { }
 
    @Roles(Oup_Roles.OUP_USER, ...Object.values(GlobalRoles))
+   @Get("/GetLocations")
+   @Header("content-type", "application/json")
+   gls() {
+      return this.staffService.getLocations();
+   }
+
+   @Roles(Oup_Roles.OUP_USER, ...Object.values(GlobalRoles))
    @Get("/GetCategories")
    @Header("content-type", "application/json")
    gcs(@Req() req: Request) {

@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository, In } from "typeorm";
 import { Request } from 'express';
+import { Oup_Location, Oup_Location_Dto } from '~arm/oup/entity/location.entity'
 
 import { getTokenData } from '~root/src/apis/helpers';
 import {  Oup_Category_Dto,  Oup_Category } from '~arm/oup/entity/category.entity';
@@ -17,6 +18,8 @@ export class Oup_Service {
    constructor(
       @InjectRepository( Oup_Category, KPI_DB_CONNECTION)
       private categoryRepository: Repository<Oup_Category>,
+      @InjectRepository( Oup_Location, KPI_DB_CONNECTION)
+      private locationRepository: Repository<Oup_Location>,
       @InjectRepository( Oup_Group, KPI_DB_CONNECTION)
       private groupRepository: Repository<Oup_Group>,
       @InjectRepository( Oup_Position, KPI_DB_CONNECTION)
@@ -24,6 +27,11 @@ export class Oup_Service {
       @InjectRepository( Oup_Stat, KPI_DB_CONNECTION)
       private statRepository: Repository<Oup_Stat>,
    ) { }
+
+   async getLocations() {
+      return (await this.locationRepository.find())
+         .sort((a,b) => a.id - b.id) as Oup_Location_Dto[]
+   }
 
    async getCategories(req: Request) {
       const userData = getTokenData(req)
@@ -65,6 +73,7 @@ export class Oup_Service {
                id: dto.positionId,
                groupId: dto.groupId,
                group: {
+                  locationId: dto.locationId,
                   roleRead: In(userData.userRoles || [])
                }
             }

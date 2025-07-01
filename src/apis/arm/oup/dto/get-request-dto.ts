@@ -1,9 +1,10 @@
 
 /**
  * @param {number} year
- * @param {groupId|undefined} categoryId
- * @param {positionId|undefined} categoryId
+ * @param {number|undefined} groupId
+ * @param {number|undefined} positionId
  * @param {number|undefined} categoryId
+ * @param {number|undefined} locationId
  */
 export class OUP_GetRequestDto {
    constructor(model: OUP_GetRequestDto) {
@@ -11,10 +12,12 @@ export class OUP_GetRequestDto {
       this.groupId = model.groupId
       this.positionId = model.positionId
       this.categoryId = model.categoryId
+      this.locationId = model.locationId
    }
 
    readonly year: number;
    readonly groupId?: number;
    readonly positionId?: number;
    readonly categoryId?: number;
+   readonly locationId?: number;
 }
