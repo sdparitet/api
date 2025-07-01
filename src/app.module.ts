@@ -4,7 +4,13 @@ import {ConfigModule} from '@nestjs/config';
 import {TypeOrmModule} from '@nestjs/typeorm';
 import { LDAP_Module } from '~ldap/ldap.module'
 
-import {GLPI_DB_CONNECTION, FORMS_DB_CONNECTION, KPI_DB_CONNECTION, STAT_DB_CONNECTION} from '~root/src/constants';
+import {
+   GLPI_DB_CONNECTION,
+   FORMS_DB_CONNECTION,
+   KPI_DB_CONNECTION,
+   STAT_DB_CONNECTION,
+   PORTAL_DB_CONNECTION,
+} from '~root/src/constants'
 
 import {Kpi_Module} from '~kpi/kpi.module';
 import {LoggerMiddleware} from '~utils/loggerMiddleware';
@@ -13,10 +19,12 @@ import {Oup_Module} from '~arm/oup/oup.module';
 import {GLPI_Module} from '~glpi/glpi.module';
 import {Form_Module} from "~root/src/apis/form/form.module";
 import { Arm_Module } from '~arm/oit/oit.module'
+import { DataSourceReader } from '~utils/form/dataSourceReader'
+import { TagReplacer } from '~utils/form/tagReplacer'
 
 @Module({
     controllers: [],
-    providers: [JwtService],
+    providers: [JwtService, DataSourceReader, TagReplacer],
     imports: [
         ConfigModule.forRoot({
             envFilePath: `.env.${process.env.NODE_ENV}`,
@@ -82,6 +90,20 @@ import { Arm_Module } from '~arm/oit/oit.module'
                 __dirname + '/apis/form/entity/*.entity.{js,ts}',
             ],
             autoLoadEntities: true,
+            logging: process.env.NODE_ENV === 'development' ? "all" : ["error"],
+            synchronize: process.env.NODE_ENV === 'development',
+        }),
+
+        TypeOrmModule.forRoot({
+            name: PORTAL_DB_CONNECTION,
+            type: 'postgres',
+            host: process.env.PORTAL_HOST,
+            port: Number(process.env.PORTAL_PORT),
+            username: process.env.PORTAL_USER,
+            password: process.env.PORTAL_PASSWORD,
+            database: process.env.PORTAL_DB,
+            entities: [],
+            autoLoadEntities: false,
             logging: process.env.NODE_ENV === 'development' ? "all" : ["error"],
             synchronize: process.env.NODE_ENV === 'development',
         }),

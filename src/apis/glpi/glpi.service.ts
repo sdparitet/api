@@ -1,9 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-import { Injectable, HttpStatus, Inject } from '@nestjs/common'
+import { Injectable, HttpStatus } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { DataSource } from 'typeorm'
 import { Response } from 'express'
-
 import { GLPI_DB_CONNECTION } from '~root/src/constants'
 import {
    TicketChatResponse,
@@ -34,8 +32,6 @@ import {
 } from '~glpi/dto/post-request-dto'
 import { GetAgreementUserParams, GetImagePreviewParams, GetImagesPreviewParams } from '~glpi/dto/get-request-dto'
 import { GLPI } from '~root/src/connectors/glpi/glpi-api.connector'
-import { CACHE_MANAGER } from '@nestjs/cache-manager'
-import { Cache } from 'cache-manager'
 import { Sharp } from 'sharp'
 import sharp from 'sharp'
 import * as mime from 'mime-types'
@@ -46,7 +42,6 @@ import { PayloadType } from '~connectors/glpi/types'
 export class GLPI_Service {
    constructor(
       @InjectDataSource(GLPI_DB_CONNECTION) private readonly glpi: DataSource,
-      @Inject(CACHE_MANAGER) private cacheService: Cache,
    ) {
    }
 
@@ -61,7 +56,7 @@ export class GLPI_Service {
    }
 
    async GlpiApiWrapper(username: string, res: Response, func: (glpi: GLPI) => void) {
-      const glpi = new GLPI(username, this.cacheService, this.glpi)
+      const glpi = new GLPI(username, this.glpi)
       await glpi.InitSession()
 
       res.setHeader('Suspend-Reauth', 'true')
@@ -169,7 +164,8 @@ export class GLPI_Service {
             where t.id in (select tickets_id
                            from glpi_groups_tickets
                            where groups_id in (select groups_id from glpi_groups_users where users_id = ${glpi.userId}))
-              and is_deleted = 0 order by t.id desc;`)
+              and is_deleted = 0
+            order by t.id desc;`)
 
          if (ret) res.status(HttpStatus.OK).json(ret)
          else res.status(HttpStatus.BAD_REQUEST)
@@ -189,7 +185,8 @@ export class GLPI_Service {
                  , 2              as need_agreement
             from glpi_tickets t
                     left join glpi.glpi_itilcategories c on t.itilcategories_id = c.id
-            where t.itilcategories_id in (select id from glpi_itilcategories where completename like 'Культура производства%')
+            where t.itilcategories_id in
+                  (select id from glpi_itilcategories where completename like 'Культура производства%')
               and t.id in (select tickets_id
                            from glpi_tickets_users tu
                            where tu.users_id = ${glpi.userId}
@@ -206,10 +203,12 @@ export class GLPI_Service {
                  , 3
             from glpi_tickets t
                     left join glpi.glpi_itilcategories c on t.itilcategories_id = c.id
-            where t.itilcategories_id in (select id from glpi_itilcategories where completename like 'Культура производства%')
+            where t.itilcategories_id in
+                  (select id from glpi_itilcategories where completename like 'Культура производства%')
               and t.id in (select tickets_id
                            from glpi_groups_tickets gt
-                           where gt.groups_id in (select groups_id from glpi_groups_users where users_id = ${glpi.userId})
+                           where
+                              gt.groups_id in (select groups_id from glpi_groups_users where users_id = ${glpi.userId})
                              and gt.type = 2)
               and is_deleted = 0
             union
@@ -231,7 +230,8 @@ export class GLPI_Service {
                     left join glpi_itilcategories c
                               on t.itilcategories_id = c.id
             where t.is_deleted = 0
-              and t.itilcategories_id in (select id from glpi_itilcategories where completename like 'Культура производства%');`)
+              and t.itilcategories_id in
+                  (select id from glpi_itilcategories where completename like 'Культура производства%');`)
 
          if (ret) res.status(HttpStatus.OK).json(ret)
          else res.status(HttpStatus.BAD_REQUEST)
@@ -306,6 +306,7 @@ export class GLPI_Service {
    async GetTicketInfo(dto: RequestTicketIdAndUsernameDto, res: Response) {
       await this.GlpiApiWrapper(dto.username, res, async (glpi) => {
          const ret = await glpi.GetItem('Ticket', dto.id, { expand_dropdowns: true })
+         console.log(ret.status)
          if (ret.status >= 400) {
             res.status(ret.status).json(ret.data)
          } else {
@@ -897,71 +898,41 @@ export class GLPI_Service {
    }
 
    async GetImagePreview(params: GetImagePreviewParams, res: Response) {
-      const cachedData: string = await this.cacheService.get(params.id.toString())
-      const ttl = 60 * 60 * 24 * 14
+      let filename = 'unknown.file'
 
-      if (!cachedData) {
-         let filename = 'unknown.file'
+      const _ret = await this.glpi.query(`select filename
+                                          from glpi_documents
+                                          where id = '${params.id}';`)
+      if (_ret) {
+         filename = _ret[0].filename
+      }
+      await this.GlpiApiWrapper(params.username, res, async (glpi) => {
+         const ret = await glpi.DownloadDocument(params.id)
+         if (ret.status === HttpStatus.OK) {
+            if (ret.mime === undefined) {
+               res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({
+                  status: 'error',
+                  message: 'File mime type not provided',
+               })
+            } else {
+               if (ret.mime.split('/').length > 0 && ret.mime.split('/')[0] === 'image') {
+                  const image = sharp(Buffer.from(ret.data, 'base64'))
+                  const compressedImageBuffer: Buffer | null = await this.CompressImage(image)
 
-         const _ret = await this.glpi.query(`select filename
-                                             from glpi_documents
-                                             where id = '${params.id}';`)
-         if (_ret) {
-            filename = _ret[0].filename
-         }
-         await this.GlpiApiWrapper(params.username, res, async (glpi) => {
-            const ret = await glpi.DownloadDocument(params.id)
-            if (ret.status === HttpStatus.OK) {
-               if (ret.mime === undefined) {
-                  res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({status: 'error', message: 'File mime type not provided' })
-               } else {
-                  if (ret.mime.split('/').length > 0 && ret.mime.split('/')[0] === 'image') {
-                     const image = sharp(Buffer.from(ret.data, 'base64'))
-                     const compressedImageBuffer: Buffer | null = await this.CompressImage(image)
+                  if (compressedImageBuffer !== null) {
+                     const compressedImage = sharp(compressedImageBuffer)
+                     const compressedMeta = await compressedImage.metadata()
+                     const bufferData = await compressedImage.toBuffer()
+                     res.status(ret.status).json({
+                        id: params.id,
+                        asFile: false,
+                        fileName: filename,
+                        fileSize: ret.data.length,
+                        fileWidth: compressedMeta.width,
+                        fileHeight: compressedMeta.height,
+                        base64: bufferData.toString('base64'),
+                     })
 
-                     if (compressedImageBuffer !== null) {
-                        const compressedImage = sharp(compressedImageBuffer)
-                        const compressedMeta = await compressedImage.metadata()
-                        const bufferData = await compressedImage.toBuffer()
-                        res.status(ret.status).json({
-                           id: params.id,
-                           asFile: false,
-                           fileName: filename,
-                           fileSize: ret.data.length,
-                           fileWidth: compressedMeta.width,
-                           fileHeight: compressedMeta.height,
-                           base64: bufferData.toString('base64'),
-                        })
-
-                        await this.cacheService.set(params.id.toString(), JSON.stringify({
-                           id: params.id,
-                           asFile: false,
-                           fileName: filename,
-                           fileSize: compressedMeta.size,
-                           fileWidth: compressedMeta.width,
-                           fileHeight: compressedMeta.height,
-                           base64: bufferData.toString('base64'),
-                        }), ttl)
-                     } else {
-                        res.status(ret.status).json({
-                           id: params.id,
-                           asFile: true,
-                           fileName: filename,
-                           fileSize: ret.data.length,
-                           fileWidth: 0,
-                           fileHeight: 0,
-                           base64: '',
-                        })
-                        await this.cacheService.set(params.id.toString(), JSON.stringify({
-                           id: params.id,
-                           asFile: true,
-                           fileName: filename,
-                           fileSize: ret.data.length,
-                           fileWidth: 0,
-                           fileHeight: 0,
-                           base64: '',
-                        }), ttl)
-                     }
                   } else {
                      res.status(ret.status).json({
                         id: params.id,
@@ -972,24 +943,24 @@ export class GLPI_Service {
                         fileHeight: 0,
                         base64: '',
                      })
-                     await this.cacheService.set(params.id.toString(), JSON.stringify({
-                        id: params.id,
-                        asFile: true,
-                        fileName: filename,
-                        fileSize: ret.data.length,
-                        fileWidth: 0,
-                        fileHeight: 0,
-                        base64: '',
-                     }), ttl)
                   }
+               } else {
+                  res.status(ret.status).json({
+                     id: params.id,
+                     asFile: true,
+                     fileName: filename,
+                     fileSize: ret.data.length,
+                     fileWidth: 0,
+                     fileHeight: 0,
+                     base64: '',
+                  })
                }
-            } else {
-               res.status(ret.status).json([])
             }
-         })
-      } else {
-         res.status(HttpStatus.OK).json(JSON.parse(cachedData))
-      }
+         } else {
+            res.status(ret.status).json([])
+         }
+      })
+
    }
 
    async GetImagesPreview(params: GetImagesPreviewParams, res: Response) {
@@ -1026,5 +997,6 @@ export class GLPI_Service {
          }
       })
    }
+
    //endregion
 }

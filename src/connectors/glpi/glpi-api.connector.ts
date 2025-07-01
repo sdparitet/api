@@ -27,7 +27,7 @@ export class GLPI {
    sessionToken: string
    authorized: boolean = false
 
-   constructor(username: string, private readonly redis: Cache, private readonly glpi: DataSource) {
+   constructor(username: string, private readonly glpi: DataSource) {
       this._username = username
       this.session = this._InitAxios()
    }
@@ -37,7 +37,7 @@ export class GLPI {
          baseURL: this._baseUrl,
          timeout: 10000,
          httpAgent: new http.Agent({ keepAlive: true }),
-         httpsAgent: new https.Agent({ keepAlive: true }),
+         httpsAgent: new https.Agent({ keepAlive: true, rejectUnauthorized: false }),
          headers: {
             'User-Agent': 'Mozilla/5.0',
             'Content-Type': 'application/json',
@@ -47,46 +47,18 @@ export class GLPI {
       })
    }
 
-   private async _GetStoredSession(): Promise<boolean> {
-      const storedSession: IGlpiSession = await this.redis.get(`session_${this._username}`)
-      if (storedSession) {
-         const { status } = await this._HandleRequest(this.session.get(`getActiveEntities`))
-         if (status === HttpStatus.OK) {
-            this.sessionInfo = storedSession
-            this.authorized = true
-            this.userId = storedSession.session.glpiID
-            this.userFio = storedSession.session.glpifriendlyname
-            this.sessionToken = storedSession.session_token
-            this.session.defaults.headers.common['Session-Token'] = this.sessionToken
-
-            return true
-         } else {
-            return false
-         }
-      } else {
-         return false
-      }
-   }
-
    async InitSession(): Promise<void> {
-      const isSessionExists = await this._GetStoredSession()
+      this._userToken = await this._GetUserToken()
 
-      if (!isSessionExists) {
-         this._userToken = await this._GetUserToken()
-
-         if (this._userToken) {
-            const { status, data } = await this._Login(this._userToken)
-
-            if (status === HttpStatus.OK) {
-               this.sessionInfo = data
-               this.authorized = true
-               this.userId = data.session.glpiID
-               this.userFio = data.session.glpifriendlyname
-               this.sessionToken = data.session_token
-               this.session.defaults.headers.common['Session-Token'] = this.sessionToken
-
-               await this.redis.set(`session_${this._username}`, this.sessionInfo, 86400)
-            }
+      if (this._userToken) {
+         const { status, data } = await this._Login(this._userToken)
+         if (status === HttpStatus.OK) {
+            this.sessionInfo = data
+            this.authorized = true
+            this.userId = data.session.glpiID
+            this.userFio = data.session.glpifriendlyname
+            this.sessionToken = data.session_token
+            this.session.defaults.headers.common['Session-Token'] = this.sessionToken
          }
       }
    }

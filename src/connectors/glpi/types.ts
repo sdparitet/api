@@ -62,7 +62,7 @@ export interface ISearch {
 export type CriteriaType = {
     link?: 'AND' | 'OR'
     field?: number
-    searchtype?: 'contains' | 'equals' | 'equal' | 'not equals' | 'less than' | 'morethan' | 'under' | 'notunder'
+    searchtype?: 'contains' | 'equals' | 'equal' | 'notequals' | 'lessthan' | 'morethan' | 'under' | 'notunder'
     value?: string | number
     criteria?: CriteriaType[]
 }
