@@ -1,7 +1,8 @@
-import { Column, Entity, PrimaryGeneratedColumn, OneToMany, ManyToOne, Unique } from 'typeorm';
-import { KPI_Product } from '~kpi/entity/product.entity';
-import { KPI_DB_CONNECTION } from '~root/src/constants';
-import { KPI_Category } from '~kpi/entity/category.entity';
+import { Column, Entity, PrimaryGeneratedColumn, OneToMany, ManyToOne, Unique } from 'typeorm'
+import { KPI_DB_CONNECTION } from '~src/constants'
+import { KPI_Product } from '~kpi/entity/product.entity'
+import { KPI_Category } from '~kpi/entity/category.entity'
+
 
 /**
  * @param {number} id
@@ -26,16 +27,16 @@ export interface KPI_Group_Dto {
 export class KPI_Group {
 
    @PrimaryGeneratedColumn({ unsigned: true, zerofill: true })
-   id: number;
+   id: number
 
-   @Column({ type: 'varchar'})
-   name: string;
-
-   @Column({ type: 'varchar', default: 'KPI_0' })
-   roleRead: string;
+   @Column({ type: 'varchar' })
+   name: string
 
    @Column({ type: 'varchar', default: 'KPI_0' })
-   roleWrite: string;
+   roleRead: string
+
+   @Column({ type: 'varchar', default: 'KPI_0' })
+   roleWrite: string
 
    @OneToMany(
       type => KPI_Product,
@@ -43,7 +44,7 @@ export class KPI_Group {
       {
          cascade: true,
          eager: true,
-      }
+      },
    )
    products: KPI_Product[]
 
@@ -51,5 +52,5 @@ export class KPI_Group {
       type => KPI_Category,
       category => category.groups,
    )
-   category: KPI_Category;
+   category: KPI_Category
 }

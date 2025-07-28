@@ -1,7 +1,7 @@
 import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm'
-import { FORMS_DB_CONNECTION } from '~root/src/constants'
-import { Form } from '~form/entity/form.entity'
-import { ICondition, IConditionGroup } from '~utils/form/types'
+import { Form } from '~forms/entity/form.entity'
+import { FORMS_DB_CONNECTION } from '~src/constants'
+import { ICondition, IConditionGroup } from '~t_u_forms/types'
 
 
 @Entity({ database: FORMS_DB_CONNECTION })

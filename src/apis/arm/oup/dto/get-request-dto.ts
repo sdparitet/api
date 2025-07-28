@@ -1,4 +1,3 @@
-
 /**
  * @param {number} year
  * @param {number|undefined} categoryId
@@ -9,6 +8,6 @@ export class OUP_GetRequestDto {
       this.categoryId = model.categoryId
    }
 
-   readonly year: number;
-   readonly categoryId?: number;
+   readonly year: number
+   readonly categoryId?: number
 }

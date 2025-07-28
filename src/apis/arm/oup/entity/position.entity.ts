@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, OneToMany } from 'typeorm';
-import { KPI_DB_CONNECTION } from '~root/src/constants';
-import { Oup_Group } from '~arm/oup/entity/group.entity';
-import { Oup_Stat } from '~arm/oup/entity/stat.entity';
+import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, OneToMany } from 'typeorm'
+import { KPI_DB_CONNECTION } from '~src/constants'
+import { Oup_Stat } from '~oup/entity/stat.entity'
+import { Oup_Group } from '~oup/entity/group.entity'
 
 
 /**
@@ -15,10 +14,10 @@ import { Oup_Stat } from '~arm/oup/entity/stat.entity';
 export class Oup_Position {
 
    @PrimaryGeneratedColumn({ unsigned: true, zerofill: true })
-   id: number;
+   id: number
 
    @Column({ type: 'varchar', nullable: false })
-   name: string;
+   name: string
 
    // noinspection JSUnusedLocalSymbols
    @OneToMany(
@@ -27,17 +26,17 @@ export class Oup_Position {
       {
          cascade: true,
          orphanedRowAction: 'nullify',
-      }
+      },
    )
-   stats: Oup_Stat[];
+   stats: Oup_Stat[]
 
    // noinspection JSUnusedLocalSymbols
    @ManyToOne(
       type => Oup_Group,
       group => group.positions,
    )
-   group: Oup_Group;
+   group: Oup_Group
 
    @Column({ nullable: false })
-   groupId: number;
+   groupId: number
 }

@@ -1,5 +1,6 @@
-import { Moment } from 'moment';
-import { Stat_Ticket } from '~stat/entity/ticket.entity';
+import { Moment } from 'moment'
+import { Stat_Ticket } from '~stat/entity/ticket.entity'
+
 
 /**
  * @param {number} ticket_id
@@ -31,6 +32,7 @@ export interface ILogData {
    status: number,
    type: number,
 }
+
 
 /**
  * @param {number} lId
@@ -65,6 +67,7 @@ export interface IShortLogData {
    nValName: string | null
 }
 
+
 /**
  * @param {number} id
  * @param {string} name
@@ -77,6 +80,7 @@ export interface IUserShortData {
    fio: string
    fot: number
 }
+
 
 /**
  * @param {number} id
@@ -91,6 +95,7 @@ export interface IUserLog {
    ticket_id: number,
 }
 
+
 /**
  * @param {number} id
  * @param {number} fot
@@ -104,6 +109,7 @@ export interface IUserLogDto extends IUserLog {
    end: string | null,
 }
 
+
 /**
  * @param {number} id
  * @param {number} fot
@@ -115,6 +121,7 @@ export interface IUserLogData extends IUserLog {
    start: Moment | null,
    end: Moment | null,
 }
+
 
 /**
  * @param {number} id
@@ -128,6 +135,7 @@ export interface IUserLogDataNormalized extends IUserLog {
    start: Moment,
    end: Moment,
 }
+
 
 /**
  * @param {number} tId
@@ -148,6 +156,7 @@ export interface Stat_TicketDto extends Omit<Stat_Ticket, 'id' | 'last_update'> 
    user: Record<string, Stat_UserRecord>
 }
 
+
 /**
  * @param {number} tUId
  * @param {boolean} active
@@ -160,6 +169,7 @@ export interface Stat_UserRecord {
    fot: number
    timers: Stat_UserRecordTimers[]
 }
+
 
 /**
  * @param {Moment} tStart

@@ -1,4 +1,3 @@
-
 export interface ILDAPUser {
    dn: string
    name: string
@@ -11,6 +10,7 @@ export interface ILDAPUser {
    company: string
    department: string
 }
+
 
 export interface ILDAPUserDto {
    dn: string
@@ -27,6 +27,7 @@ export interface ILDAPUserDto {
    userPrincipalName: string
    mail: string
 }
+
 
 export class LDAP_User implements ILDAPUser {
    constructor(user: Partial<ILDAPUserDto>) {

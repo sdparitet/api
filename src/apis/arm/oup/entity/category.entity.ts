@@ -1,7 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { Column, Entity, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
-import { KPI_DB_CONNECTION } from '~root/src/constants';
-import { Oup_Stat } from '~arm/oup/entity/stat.entity';
+import { Column, Entity, PrimaryGeneratedColumn, OneToMany } from 'typeorm'
+import { KPI_DB_CONNECTION } from '~src/constants'
+import { Oup_Stat } from '~oup/entity/stat.entity'
+
 
 /**
  * @param {number} id
@@ -14,6 +14,7 @@ export interface Oup_Category_Dto {
    read: boolean
 }
 
+
 /**
  * @param {number} id
  * @param {string} name
@@ -24,13 +25,13 @@ export interface Oup_Category_Dto {
 export class Oup_Category {
 
    @PrimaryGeneratedColumn({ unsigned: true, zerofill: true })
-   id: number;
+   id: number
 
    @Column({ type: 'varchar', unique: true })
-   name: string;
+   name: string
 
    @Column({ type: 'varchar', default: 'STAFF_0' })
-   roleRead: string;
+   roleRead: string
 
    // noinspection JSUnusedLocalSymbols
    @OneToMany(
@@ -39,7 +40,7 @@ export class Oup_Category {
       {
          cascade: true,
          eager: true,
-      }
+      },
    )
    stats: Oup_Stat[]
 }

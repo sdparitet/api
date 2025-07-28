@@ -1,12 +1,13 @@
-import { Module } from "@nestjs/common";
-import { JwtService } from '@nestjs/jwt';
+import { JwtService } from '@nestjs/jwt'
+import { Module } from '@nestjs/common'
+import { LDAP_Service } from '~ldap/ldap.service'
+import { LDAP_Controller } from '~ldap/ldap.controller'
 
-import { LDAP_Service } from "~ldap/ldap.service";
-import { LDAP_Controller } from '~ldap/ldap.controller';
 
 @Module({
    providers: [LDAP_Service, JwtService],
    controllers: [LDAP_Controller],
    exports: [LDAP_Service],
 })
-export class LDAP_Module {}
+export class LDAP_Module {
+}

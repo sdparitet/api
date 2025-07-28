@@ -1,4 +1,5 @@
-import { Stat_ALLTicket } from '~stat/entity/all_ticket.entity';
+import { Stat_ALLTicket } from '~stat/entity/all_ticket.entity'
+
 
 export interface IUserData {
    userId: number
@@ -6,6 +7,7 @@ export interface IUserData {
    userGuid: string
    userRoles: string[]
 }
+
 
 /**
  * @param {number} pageNum

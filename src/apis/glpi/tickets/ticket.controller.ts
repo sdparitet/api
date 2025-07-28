@@ -1,0 +1,391 @@
+import { UseInterceptors, UploadedFiles, Controller, Header, Query, Body, Post, Get, Res } from '@nestjs/common'
+import { ApiTags, ApiBody, ApiResponse } from '@nestjs/swagger'
+import { FilesInterceptor } from '@nestjs/platform-express'
+import { Response } from 'express'
+import { GLPI_Roles } from '~roles/glpi.roles'
+import { GlobalRoles } from '~roles/global-roles'
+import { Portal_Roles } from '~roles/portal.roles'
+import { GLPI_DB_CONNECTION } from '~src/constants'
+import { Username } from '~decorators/jwt.username'
+import { Roles } from '~guards/roles-auth.decorator'
+import { Ticket_Service } from '~tickets/ticket.service'
+import {
+   GetAgreementUserParams,
+   GetImagesPreviewParams,
+   GetImagePreviewParams,
+   GetUserAccessResponse,
+} from '~tickets/dto/get-request-dto'
+import {
+   RequestTicketIdAndUsernameAndStateDto,
+   ResponseGetImagePreviewResponse,
+   RequestTicketIdAndUsernameDto,
+   CreateTicketFollowupResponse,
+   UploadTicketDocumentResponse,
+   DeleteUserFromTicketRequest,
+   ChangeTicketStatusRequest,
+   GlpiUsersInGroupsResponse,
+   SetAgreementStatusRequest,
+   GetTicketsMembersRequest,
+   GetAgreementInfoResponse,
+   SetTicketCategoryRequest,
+   AgreementTicketsResponse,
+   CreateAgreementRequest,
+   TicketMembersResponse,
+   CreateSolutionRequest,
+   SolutionAnswerRequest,
+   UserTicketsResponse,
+   GetSolutionResponse,
+   SetTaskStateRequest,
+   TicketInfoResponse,
+   TicketChatResponse,
+   RequestUsernameDto,
+   RequestTicketIdDto,
+   UserAccessOnTicket,
+   GetSolutionRequest,
+   TicketFollowupDto,
+   CreateTaskRequest,
+   GetTaskResponse,
+   DefaultResponse,
+} from '~tickets/dto/post-request-dto'
+
+
+@ApiTags(GLPI_DB_CONNECTION)
+@Controller('glpi')
+export class Ticket_Controller {
+   constructor(
+      private glpiService: Ticket_Service,
+   ) {
+   }
+
+   //region [ Ticket list ]
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/GetUserTickets')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: false, type: RequestUsernameDto })
+   @ApiResponse({ type: [UserTicketsResponse] })
+   gut(@Body() dto: RequestUsernameDto, @Res() res: Response) {
+      return this.glpiService.GetUserTickets(dto, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/GetUserAssignTickets')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: false, type: RequestUsernameDto })
+   @ApiResponse({ type: [UserTicketsResponse] })
+   guat(@Body() dto: RequestUsernameDto, @Res() res: Response) {
+      return this.glpiService.GetUserAssignTickets(dto, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/GetUserAgreementsTickets')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: false, type: RequestUsernameDto })
+   @ApiResponse({ type: [AgreementTicketsResponse] })
+   guagt(@Body() dto: RequestUsernameDto, @Res() res: Response) {
+      return this.glpiService.GetUserAgreementsTickets(dto, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/GetUserGroupsTickets')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: false, type: RequestUsernameDto })
+   @ApiResponse({ type: [AgreementTicketsResponse] })
+   gugt(@Body() dto: RequestUsernameDto, @Res() res: Response) {
+      return this.glpiService.GetUserGroupsTickets(dto, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/GetCultureTickets')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: false, type: RequestUsernameDto })
+   @ApiResponse({ type: [AgreementTicketsResponse] })
+   gct(@Body() dto: RequestUsernameDto, @Res() res: Response) {
+      return this.glpiService.GetCultureTickets(dto, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/GetTicketsMembers')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: true, type: RequestUsernameDto })
+   @ApiResponse({ type: [GetTicketsMembersRequest] })
+   gtm(@Body() dto: GetTicketsMembersRequest, @Res() res: Response) {
+      return this.glpiService.GetTicketsMembers(dto, res)
+   }
+
+   // endregion
+
+   //region [ Ticket info ]
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/GetUserAccessOnTicket')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: true, type: RequestTicketIdAndUsernameDto })
+   @ApiResponse({ type: [UserAccessOnTicket] })
+   guaot(@Body() dto: RequestTicketIdAndUsernameDto, @Res() res: Response) {
+      return this.glpiService.GetUserAccessOnTicket(dto, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Get('/GetProfile')
+   @Header('content-type', 'application/json')
+   @ApiResponse({ type: [GetUserAccessResponse] })
+   gp(@Query() params: { username: string }, @Res() res: Response) {
+      return this.glpiService.GetProfile(params, res)
+   }
+
+   // ToDo Delete
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Get('/GetUserAccess')
+   @Header('content-type', 'application/json')
+   @ApiResponse({ type: [GetUserAccessResponse] })
+   gua(@Query() params: { username: string }, @Res() res: Response) {
+      return this.glpiService.GetUserAccess(params, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/GetTicketInfo')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: true, type: RequestTicketIdAndUsernameDto })
+   @ApiResponse({ type: [TicketInfoResponse] })
+   gtibi(@Body() dto: RequestTicketIdAndUsernameDto, @Res() res: Response) {
+      return this.glpiService.GetTicketInfo(dto, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/GetTicketMembers')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: true, type: RequestTicketIdDto })
+   @ApiResponse({ type: [TicketMembersResponse] })
+   gtubti(@Body() dto: RequestTicketIdDto, @Res() res: Response) {
+      return this.glpiService.GetTicketMembers(dto, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/GetTicketChat')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: true, type: RequestTicketIdAndUsernameDto })
+   @ApiResponse({ type: [TicketChatResponse] })
+   gtfbti(@Body() dto: RequestTicketIdAndUsernameDto, @Res() res: Response) {
+      return this.glpiService.GetTicketChat(dto, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/GetSolutionInfo')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: true, type: GetSolutionRequest })
+   @ApiResponse({ type: [GetSolutionResponse] })
+   gss(@Body() dto: GetSolutionRequest, @Res() res: Response) {
+      return this.glpiService.GetSolutionInfo(dto, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Get('/GetSolutionTemplates')
+   @Header('content-type', 'application/json')
+   @ApiResponse({ type: [DefaultResponse] })
+   gst(@Res() res: Response) {
+      return this.glpiService.GetSolutionTemplates(res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Get('/GetUsers')
+   @Header('content-type', 'application/json')
+   gu(@Res() res: Response) {
+      return this.glpiService.GetUsers(res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Get('/GetGroups')
+   @Header('content-type', 'application/json')
+   gg(@Res() res: Response) {
+      return this.glpiService.GetGroups(res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/CreateSolution')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: true, type: CreateSolutionRequest })
+   @ApiResponse({ type: [DefaultResponse] })
+   cs(@Body() dto: CreateSolutionRequest, @Res() res: Response) {
+      return this.glpiService.CreateSolution(dto, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/SetSolutionAnswer')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: true, type: SolutionAnswerRequest })
+   @ApiResponse({ type: [DefaultResponse] })
+   ssa(@Body() dto: SolutionAnswerRequest, @Res() res: Response) {
+      return this.glpiService.SetSolutionAnswer(dto, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/GetTaskInfo')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: true, type: RequestTicketIdDto })
+   @ApiResponse({ type: [GetTaskResponse] })
+   gti(@Body() dto: RequestTicketIdDto, @Res() res: Response) {
+      return this.glpiService.GetTaskInfo(dto, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/SetTaskState')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: true, type: SetTaskStateRequest })
+   sts(@Body() dto: SetTaskStateRequest, @Res() res: Response) {
+      return this.glpiService.SetTaskState(dto, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/CreateTask')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: true, type: CreateTaskRequest })
+   ct(@Body() dto: CreateTaskRequest, @Res() res: Response) {
+      return this.glpiService.CreateTask(dto, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/GetAgreementInfo')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: true, type: RequestTicketIdDto })
+   @ApiResponse({ type: [GetAgreementInfoResponse] })
+   gai(@Body() dto: RequestTicketIdDto, @Res() res: Response) {
+      return this.glpiService.GetAgreementInfo(dto, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Get('/GetAgreementUser')
+   @Header('content-type', 'application/json')
+   gau(@Query() params: GetAgreementUserParams, @Res() res: Response) {
+      return this.glpiService.GetAgreementUser(params, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/SetAgreementStatus')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: true, type: SetAgreementStatusRequest })
+   sas(@Body() dto: SetAgreementStatusRequest, @Res() res: Response) {
+      return this.glpiService.SetAgreementStatus(dto, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/CreateAgreement')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: true, type: CreateAgreementRequest })
+   ca(@Body() dto: CreateAgreementRequest, @Res() res: Response) {
+      return this.glpiService.CreateAgreement(dto, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/ChangeTicketStatus')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: true, type: ChangeTicketStatusRequest })
+   cts(@Body() dto: ChangeTicketStatusRequest, @Res() res: Response) {
+      return this.glpiService.ChangeTicketStatus(dto, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/GetCategories')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: true, type: RequestUsernameDto })
+   gc(@Body() dto: RequestUsernameDto, @Res() res: Response) {
+      return this.glpiService.GetCategories(dto, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/SetTicketCategory')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: true, type: SetTicketCategoryRequest })
+   sc(@Body() dto: SetTicketCategoryRequest, @Res() res: Response) {
+      return this.glpiService.SetTicketCategory(dto, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/DeleteUserFromTicket')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: true, type: DeleteUserFromTicketRequest })
+   duft(@Body() dto: DeleteUserFromTicketRequest, @Res() res: Response) {
+      return this.glpiService.DeleteUserFromTicket(dto, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Get('/GetUserIdByUsername')
+   @Header('content-type', 'application/json')
+   guibu(@Query() params: RequestUsernameDto, @Res() res: Response) {
+      return this.glpiService.GetUserInfoByUsername(params, res)
+   }
+
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Post('/AddUsersInTicket')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: true, type: Array<DeleteUserFromTicketRequest> })
+   auft(@Body() dto: DeleteUserFromTicketRequest[], @Res() res: Response) {
+      return this.glpiService.AddUsersInTicket(dto, res)
+   }
+
+   // endregion
+
+   //region [ Phonebook ]
+   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
+   @Get('/GetGlpiUsersInGroups')
+   @Header('content-type', 'application/json')
+   @ApiResponse({ type: [GlpiUsersInGroupsResponse] })
+   gguig(@Res() res: Response) {
+      return this.glpiService.GetGlpiUsersInGroups(res)
+   }
+
+   // endregion
+
+   //region [ GLPI API ]
+   @Roles([Portal_Roles.PORTAL_USERS, GLPI_Roles.GLPI_DATA])
+   @Post('/CreateTicketFollowup')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: true, type: TicketFollowupDto })
+   @ApiResponse({ type: [CreateTicketFollowupResponse] })
+   ctf(@Username() username: string, @Body() dto: TicketFollowupDto, @Res() res: Response) {
+      return this.glpiService.CreateTicketFollowup(dto, res)
+   }
+
+   @Roles([Portal_Roles.PORTAL_USERS, GLPI_Roles.GLPI_DATA])
+   @Post('/SwitchTicketNotifications')
+   @Header('content-type', 'application/json')
+   @ApiBody({ required: true, type: RequestTicketIdAndUsernameAndStateDto })
+   // @ApiResponse({type: [TicketFollowupsResponse]})
+   stf(@Username() username: string, @Body() dto: RequestTicketIdAndUsernameAndStateDto, @Res() res: Response) {
+      return this.glpiService.SwitchTicketNotifications(dto, res)
+   }
+
+   @Roles([Portal_Roles.PORTAL_USERS, GLPI_Roles.GLPI_DATA])
+   @Post('/UploadTicketDocument')
+   @ApiBody({ required: true, type: RequestTicketIdAndUsernameDto })
+   @ApiResponse({ type: [UploadTicketDocumentResponse] })
+   @UseInterceptors(FilesInterceptor('files', 100, { limits: { fileSize: 1024 * 1024 * 80 } }))
+   ud(@Username() username: string, @UploadedFiles() files: Express.Multer.File[], @Body() dto: RequestTicketIdAndUsernameDto, @Res() res: Response) {
+      return this.glpiService.UploadTicketDocument(files, dto, res)
+   }
+
+   @Roles([Portal_Roles.PORTAL_USERS, GLPI_Roles.GLPI_DATA])
+   @Post('/DownloadDocument')
+   @Header('content-type', 'application/octet-stream')
+   @ApiBody({ required: true, type: RequestTicketIdAndUsernameDto })
+   dd(@Username() username: string, @Body() dto: RequestTicketIdAndUsernameDto, @Res() res: Response) {
+      return this.glpiService.DownloadDocument(dto, res)
+   }
+
+   @Roles([Portal_Roles.PORTAL_USERS, GLPI_Roles.GLPI_DATA])
+   @Get('/GetImagePreview')
+   @Header('content-type', 'application/json; charset=utf-8')
+   @ApiResponse({ type: [ResponseGetImagePreviewResponse] })
+   gip(@Username() username: string, @Query() params: GetImagePreviewParams, @Res() res: Response) {
+      return this.glpiService.GetImagePreview(params, res)
+   }
+
+   @Roles([Portal_Roles.PORTAL_USERS, GLPI_Roles.GLPI_DATA])
+   @Get('/GetImagesPreview')
+   @Header('content-type', 'application/json; charset=utf-8')
+   @ApiResponse({ type: [GetImagesPreviewParams] })
+   gisp(@Username() username: string, @Query() params: GetImagesPreviewParams, @Res() res: Response) {
+      return this.glpiService.GetImagesPreview(params, res)
+   }
+
+
+   // endregion
+}

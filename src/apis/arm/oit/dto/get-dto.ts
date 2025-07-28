@@ -1,5 +1,6 @@
-import dayjs from 'dayjs'
 import { ApiProperty } from '@nestjs/swagger'
+import dayjs from 'dayjs'
+
 
 /**
  * @param {number[]} groupIds
@@ -12,10 +13,11 @@ export class OIT_GetAccidentsDto {
       this.dateAfter = model.dateAfter || dayjs().startOf('year').toISOString()
       this.dateBefore = model.dateBefore || dayjs().endOf('week').toISOString()
    }
+
    @ApiProperty()
-   readonly groupIds: number[];
+   readonly groupIds: number[]
    @ApiProperty()
-   readonly dateAfter: string;
+   readonly dateAfter: string
    @ApiProperty()
-   readonly dateBefore: string;
+   readonly dateBefore: string
 }

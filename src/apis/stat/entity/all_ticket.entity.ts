@@ -1,5 +1,5 @@
-import { ViewColumn, ViewEntity } from 'typeorm';
-import { STAT_DB_CONNECTION } from '~root/src/constants';
+import { ViewColumn, ViewEntity } from 'typeorm'
+import { STAT_DB_CONNECTION } from '~src/constants'
 
 
 /**
@@ -121,125 +121,125 @@ import { STAT_DB_CONNECTION } from '~root/src/constants';
       '         left join glpi.glpi_itilcategories tc4 on tc4.id = tc3.itilcategories_id ' +
       '         left join glpi.glpi_itilcategories tc5 on tc5.id = tc4.itilcategories_id ' +
       'where t.id is not null' +
-      ';'
+      ';',
 })
 export class Stat_ALLTicket {
 
    @ViewColumn()
-   id: number;
+   id: number
 
    @ViewColumn()
-   status: number;
+   status: number
 
    @ViewColumn()
-   time_reaction: number;
+   time_reaction: number
 
    @ViewColumn()
-   time_solution: number;
+   time_solution: number
 
    @ViewColumn()
-   user_cost: number;
+   user_cost: number
 
    @ViewColumn()
-   ticket_cost: number;
+   ticket_cost: number
 
    @ViewColumn()
-   stat_updated: number;
+   stat_updated: number
 
    @ViewColumn()
-   name: string;
+   name: string
 
    @ViewColumn()
-   content: string;
+   content: string
 
    @ViewColumn()
-   user_updater_id: number;
+   user_updater_id: number
 
    @ViewColumn()
-   user_updater: string;
+   user_updater: string
 
    @ViewColumn()
-   entity_id: number;
+   entity_id: number
 
    @ViewColumn()
-   entity: string;
+   entity: string
 
    @ViewColumn()
-   user_recipient_id: number;
+   user_recipient_id: number
 
    @ViewColumn()
-   user_recipient: string;
+   user_recipient: string
 
 
    @ViewColumn()
-   user_author_id: number;
+   user_author_id: number
 
    @ViewColumn()
-   user_author: string;
+   user_author: string
 
    @ViewColumn()
-   user_specialist_id: number;
+   user_specialist_id: number
 
    @ViewColumn()
-   user_specialist: string;
+   user_specialist: string
 
    @ViewColumn()
-   user_viewer_id: number;
+   user_viewer_id: number
 
    @ViewColumn()
-   user_viewer: string;
+   user_viewer: string
 
    @ViewColumn()
-   group_author_id: number;
+   group_author_id: number
 
    @ViewColumn()
-   group_author: string;
+   group_author: string
 
    @ViewColumn()
-   group_specialist_id: number;
+   group_specialist_id: number
 
    @ViewColumn()
-   group_specialist: string;
+   group_specialist: string
 
    @ViewColumn()
-   group_viewer_id: number;
+   group_viewer_id: number
 
    @ViewColumn()
-   group_viewer: string;
+   group_viewer: string
 
    @ViewColumn()
-   request_type: string;
+   request_type: string
 
    @ViewColumn()
-   urgency: number;
+   urgency: number
 
    @ViewColumn()
-   impact: number;
+   impact: number
 
    @ViewColumn()
-   priority: number;
+   priority: number
 
    @ViewColumn()
-   category: string;
+   category: string
 
    @ViewColumn()
-   type: number;
+   type: number
 
    @ViewColumn()
-   isDeleted: boolean;
+   isDeleted: boolean
 
    @ViewColumn()
-   date_creation: string;
+   date_creation: string
 
    @ViewColumn()
-   date_open: string;
+   date_open: string
 
    @ViewColumn()
-   date_solve: string;
+   date_solve: string
 
    @ViewColumn()
-   date_close: string;
+   date_close: string
 
    @ViewColumn()
-   date_mode: string;
+   date_mode: string
 }

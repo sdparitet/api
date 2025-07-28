@@ -1,5 +1,5 @@
-import { ViewColumn, ViewEntity } from 'typeorm';
-import { STAT_DB_CONNECTION } from '~root/src/constants';
+import { ViewColumn, ViewEntity } from 'typeorm'
+import { STAT_DB_CONNECTION } from '~src/constants'
 
 
 /**
@@ -72,34 +72,34 @@ import { STAT_DB_CONNECTION } from '~root/src/constants';
       '      ) ul ' +
       'group by ul.id, ticket_id, l_date, l_type ' +
       'order by ul.id, ul.ticket_id, ul.l_date ' +
-      ';'
+      ';',
 })
 export class Stat_UserLogs {
 
    @ViewColumn()
-   id: number;
+   id: number
 
    @ViewColumn()
-   fot: number;
+   fot: number
 
    @ViewColumn()
-   name: string;
+   name: string
 
    @ViewColumn()
-   full_name: string;
+   full_name: string
 
    @ViewColumn()
-   ticket_id: number;
+   ticket_id: number
 
    @ViewColumn()
-   l_type: number;
+   l_type: number
 
    @ViewColumn()
-   l_date: string;
+   l_date: string
 
    @ViewColumn()
-   old_value: string;
+   old_value: string
 
    @ViewColumn()
-   new_value: string;
+   new_value: string
 }

@@ -1,4 +1,3 @@
-
 /**
  * @param {number} id
  * @param {string} date
@@ -12,8 +11,9 @@ export class KPI_PostRequestDto {
       this.product = model.product
       this.value = model.value
    }
-   readonly id: number;
-   readonly date: string;
-   readonly product: number;
-   readonly value: number;
+
+   readonly id: number
+   readonly date: string
+   readonly product: number
+   readonly value: number
 }

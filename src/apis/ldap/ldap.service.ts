@@ -1,6 +1,6 @@
-import { Injectable } from "@nestjs/common";
-// import * as process from 'node:process'
 // import * as SimpleLDAP from 'simple-ldap-search'
+import { Injectable } from "@nestjs/common"
+// import * as process from 'node:process'
 // import { ILDAPUserDto, LDAP_User } from '~ldap/dto/get-request-dto'
 
 @Injectable()

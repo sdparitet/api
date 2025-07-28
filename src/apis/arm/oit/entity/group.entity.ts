@@ -1,7 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { Column, Entity, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
-import { KPI_DB_CONNECTION } from '~root/src/constants';
-import { Oit_Accident } from '~arm/oit/entity/accident.entity'
+import { Column, Entity, PrimaryGeneratedColumn, OneToMany } from 'typeorm'
+import { KPI_DB_CONNECTION } from '~src/constants'
+import { Oit_Accident } from '~oit/entity/accident.entity'
+
 
 /**
  * @param {number} id
@@ -20,6 +20,7 @@ export interface Oit_Group_Dto {
    accidents: Oit_Accident[]
 }
 
+
 /**
  * @param {number} id
  * @param {string} name
@@ -32,19 +33,19 @@ export interface Oit_Group_Dto {
 export class Oit_Group {
 
    @PrimaryGeneratedColumn({ unsigned: true, zerofill: true })
-   id: number;
+   id: number
 
    @Column({ type: 'varchar', nullable: false })
-   name: string;
+   name: string
 
    @Column({ type: 'varchar', unique: true })
-   path: string;
+   path: string
 
    @Column({ type: 'varchar', default: 'OIT_0R' })
-   roleRead: string;
+   roleRead: string
 
    @Column({ type: 'varchar', default: 'OIT_0W' })
-   roleWrite: string;
+   roleWrite: string
 
    // noinspection JSUnusedLocalSymbols
    @OneToMany(
@@ -53,7 +54,7 @@ export class Oit_Group {
       {
          cascade: true,
          eager: true,
-      }
+      },
    )
    accidents: Oit_Accident[]
 }

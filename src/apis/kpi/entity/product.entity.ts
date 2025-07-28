@@ -1,7 +1,7 @@
-import { Column, Entity, PrimaryGeneratedColumn, OneToMany, ManyToOne } from 'typeorm';
-import { KPI_Kpi } from '~kpi/entity/kpi.entity';
-import { KPI_Group } from '~kpi/entity/group.entity';
-import { KPI_DB_CONNECTION } from '~root/src/constants';
+import { Column, Entity, PrimaryGeneratedColumn, OneToMany, ManyToOne } from 'typeorm'
+import { KPI_Kpi } from '~kpi/entity/kpi.entity'
+import { KPI_DB_CONNECTION } from '~src/constants'
+import { KPI_Group } from '~kpi/entity/group.entity'
 
 
 /**
@@ -11,31 +11,31 @@ import { KPI_DB_CONNECTION } from '~root/src/constants';
  * @param {KPI_Kpi[]} kpis
  * @param {KPI_Group} group
  */
-@Entity( { database: KPI_DB_CONNECTION })
+@Entity({ database: KPI_DB_CONNECTION })
 export class KPI_Product {
 
    @PrimaryGeneratedColumn({ unsigned: true, zerofill: true })
-   id: number;
+   id: number
 
    @Column({ type: 'varchar', unique: true })
-   name: string;
+   name: string
 
    @Column({ type: 'varchar', nullable: true })
-   description: string;
+   description: string
 
    @OneToMany(
       type => KPI_Kpi,
       kpi => kpi.product,
       {
          orphanedRowAction: 'nullify',
-      }
+      },
    )
-   kpis: KPI_Kpi[];
+   kpis: KPI_Kpi[]
 
    @ManyToOne(
       type => KPI_Group,
       group => group.products,
    )
-   group: KPI_Group;
+   group: KPI_Group
 }
 

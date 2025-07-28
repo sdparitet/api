@@ -1,8 +1,8 @@
 import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, Unique, OneToMany } from 'typeorm'
-import { FORMS_DB_CONNECTION } from '~root/src/constants'
-import { Form } from '~form/entity/form.entity'
-import { Field } from '~form/entity/field.entity'
-import { PropertyConditions } from '~utils/form/types'
+import { Form } from '~forms/entity/form.entity'
+import { Field } from '~forms/entity/field.entity'
+import { FORMS_DB_CONNECTION } from '~src/constants'
+import { PropertyConditions } from '~t_u_forms/types'
 
 
 @Entity({ database: FORMS_DB_CONNECTION })

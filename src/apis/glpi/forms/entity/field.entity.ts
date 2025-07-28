@@ -1,7 +1,7 @@
 import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, Unique } from 'typeorm'
-import { FORMS_DB_CONNECTION } from '~root/src/constants'
-import { Block } from '~form/entity/block.entity'
-import { FieldTypeEnum, IFieldData, PropertyConditions } from '~utils/form/types'
+import { Block } from '~forms/entity/block.entity'
+import { FORMS_DB_CONNECTION } from '~src/constants'
+import { FieldTypeEnum, IFieldData, PropertyConditions } from '~t_u_forms/types'
 
 
 @Entity({ database: FORMS_DB_CONNECTION })

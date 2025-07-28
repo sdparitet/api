@@ -1,4 +1,3 @@
-
 /**
  * @param {number} group_id
  */

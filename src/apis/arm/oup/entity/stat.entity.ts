@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
-import { KPI_DB_CONNECTION } from '~root/src/constants';
-import { Oup_Position } from '~arm/oup/entity/position.entity';
-import { Oup_Category } from '~arm/oup/entity/category.entity';
+import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Unique } from 'typeorm'
+import { KPI_DB_CONNECTION } from '~src/constants'
+import { Oup_Position } from '~oup/entity/position.entity'
+import { Oup_Category } from '~oup/entity/category.entity'
 
 
 /**
@@ -18,16 +17,16 @@ import { Oup_Category } from '~arm/oup/entity/category.entity';
 export class Oup_Stat {
 
    @PrimaryGeneratedColumn({ unsigned: true, zerofill: true })
-   id: number;
+   id: number
 
    @Column({ type: 'int', nullable: false })
-   year: number;
+   year: number
 
    @Column({ type: 'int', nullable: false })
-   month: number;
+   month: number
 
    @Column({ type: 'float', default: 0, nullable: true })
-   value: number;
+   value: number
 
    // noinspection JSUnusedLocalSymbols
    @ManyToOne(
@@ -36,20 +35,20 @@ export class Oup_Stat {
       {
          onDelete: 'CASCADE',
          orphanedRowAction: 'nullify',
-      }
+      },
    )
    @JoinColumn()
-   position: Oup_Position;
+   position: Oup_Position
    @Column({ nullable: false })
-   positionId: number;
+   positionId: number
 
    // noinspection JSUnusedLocalSymbols
    @ManyToOne(
       type => Oup_Category,
       category => category.stats,
    )
-   category: Oup_Category;
+   category: Oup_Category
 
    @Column({ nullable: false })
-   categoryId: number;
+   categoryId: number
 }

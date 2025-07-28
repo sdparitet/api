@@ -1,8 +1,7 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
+import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Unique } from 'typeorm'
 import { ApiHideProperty } from '@nestjs/swagger'
-import { KPI_DB_CONNECTION } from '~root/src/constants';
-import { Oit_Group } from '~arm/oit/entity/group.entity'
+import { KPI_DB_CONNECTION } from '~src/constants'
+import { Oit_Group } from '~oit/entity/group.entity'
 
 
 /**
@@ -18,16 +17,16 @@ import { Oit_Group } from '~arm/oit/entity/group.entity'
 export class Oit_Accident {
 
    @PrimaryGeneratedColumn({ unsigned: true, zerofill: true })
-   id: number;
+   id: number
 
    @Column({ type: 'timestamptz', nullable: false })
-   date: string;
+   date: string
 
    @Column({ type: 'float', nullable: true, default: 0 })
-   value: number;
+   value: number
 
    @Column({ type: 'text', nullable: false, default: '' })
-   comment: string;
+   comment: string
 
    // noinspection JSUnusedLocalSymbols
    @ManyToOne(
@@ -36,11 +35,11 @@ export class Oit_Accident {
       {
          onDelete: 'CASCADE',
          orphanedRowAction: 'nullify',
-      }
+      },
    )
    @JoinColumn()
    @ApiHideProperty()
-   group: Oit_Group;
+   group: Oit_Group
    @Column({ nullable: false })
-   groupId: number;
+   groupId: number
 }

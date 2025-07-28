@@ -1,6 +1,7 @@
-import { Column, Entity, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
-import { KPI_DB_CONNECTION } from '~root/src/constants';
-import { KPI_Group } from '~kpi/entity/group.entity';
+import { Column, Entity, PrimaryGeneratedColumn, OneToMany } from 'typeorm'
+import { KPI_DB_CONNECTION } from '~src/constants'
+import { KPI_Group } from '~kpi/entity/group.entity'
+
 
 /**
  * @param {number} id
@@ -20,13 +21,13 @@ export interface KPI_Category_Dto {
 export class KPI_Category {
 
    @PrimaryGeneratedColumn({ unsigned: true, zerofill: true })
-   id: number;
+   id: number
 
    @Column({ type: 'varchar', unique: true })
-   name: string;
+   name: string
 
    @Column({ type: 'varchar', default: 'KPI_0' })
-   roleRead: string;
+   roleRead: string
 
    @OneToMany(
       type => KPI_Group,
@@ -34,7 +35,7 @@ export class KPI_Category {
       {
          cascade: true,
          eager: true,
-      }
+      },
    )
    groups: KPI_Group[]
 }

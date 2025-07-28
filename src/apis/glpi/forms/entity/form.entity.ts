@@ -1,7 +1,7 @@
 import { Column, Entity, PrimaryGeneratedColumn, OneToMany } from 'typeorm'
-import { FORMS_DB_CONNECTION } from '~root/src/constants'
-import { Block } from '~form/entity/block.entity'
-import { Template } from '~form/entity/template.entity'
+import { Block } from '~forms/entity/block.entity'
+import { FORMS_DB_CONNECTION } from '~src/constants'
+import { Template } from '~forms/entity/template.entity'
 
 
 @Entity({ database: FORMS_DB_CONNECTION })

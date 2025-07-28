@@ -1,5 +1,5 @@
-import dayjs from 'dayjs'
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
+import dayjs from 'dayjs'
 
 
 /**
@@ -9,8 +9,10 @@ export class Oit_RemoveAccidentDto {
    constructor(model: Oit_RemoveAccidentDto) {
       this.id = model.id
    }
+
    readonly id: number[]
 }
+
 
 /**
  * @param {number?} id

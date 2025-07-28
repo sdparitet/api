@@ -1,10 +1,10 @@
-import { Template } from '~form/entity/template.entity'
-import { AnswerType, IField, IForm, OperatorsEnum } from '~utils/form/types'
-import { GLPI } from '~connectors/glpi/glpi-api.connector'
-import dayjs, { ManipulateType } from 'dayjs'
-import { PayloadType } from '~form/types'
-import { DataSourceReader } from '~utils/form/dataSourceReader'
 import { Inject, Injectable } from '@nestjs/common'
+import dayjs, { ManipulateType } from 'dayjs'
+import { PayloadType } from '~t_forms/types'
+import { GLPI } from '~c_glpi/glpi-api.connector'
+import { Template } from '~forms/entity/template.entity'
+import { DataSourceReader } from '~utils/forms/dataSourceReader'
+import { AnswerType, IField, IForm, OperatorsEnum } from '~t_u_forms/types'
 
 
 enum TagTypeEnum {

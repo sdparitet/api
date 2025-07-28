@@ -1,27 +1,28 @@
-import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { FindManyOptions, Repository, Like } from "typeorm";
-import { Request } from 'express';
+import { FindManyOptions, Repository, Like } from 'typeorm'
+import { InjectRepository } from '@nestjs/typeorm'
+import { Injectable } from '@nestjs/common'
+import { Request } from 'express'
+import { ITicketDto } from '~src/shared'
+import { STAT_DB_CONNECTION } from '~src/constants'
+import { Stat_ALLTicket } from '~stat/entity/all_ticket.entity'
+import { Stat_RequestTicketDto } from '~stat/dto/post-request-dto'
 
-import { Stat_RequestTicketDto } from '~stat/dto/post-request-dto';
-import { STAT_DB_CONNECTION } from '~root/src/constants';
-import { Stat_ALLTicket } from '~stat/entity/all_ticket.entity';
-import { ITicketDto } from '~root/src/shared';
 
 @Injectable()
 export class Stat_Service {
    constructor(
       @InjectRepository(Stat_ALLTicket, STAT_DB_CONNECTION)
       private readonly allStatRepository: Repository<Stat_ALLTicket>,
-   ) { }
+   ) {
+   }
 
    async GetTickets(req: Request, dto: Stat_RequestTicketDto) {
       const options: FindManyOptions<Stat_ALLTicket> = {
          where: {
-            isDeleted: dto.isDeleted
+            isDeleted: dto.isDeleted,
          },
          take: dto.pageSize || 100,
-         skip: (dto.pageSize || 100) * Math.max((dto.pageNum || 0), 0)
+         skip: (dto.pageSize || 100) * Math.max((dto.pageNum || 0), 0),
       }
 
       let dateFilter = false
@@ -35,11 +36,11 @@ export class Stat_Service {
       dto.filters.forEach(filter => {
          switch (filter.field) {
             case 'year': {
-               likeFilter = filter.values[0] + likeFilter.slice(4,7)
+               likeFilter = filter.values[0] + likeFilter.slice(4, 7)
                break
             }
             case 'month': {
-               likeFilter = likeFilter.slice(0,5) + filter.values[0]
+               likeFilter = likeFilter.slice(0, 5) + filter.values[0]
                break
             }
             case 'cat': {
@@ -56,27 +57,26 @@ export class Stat_Service {
       if (!dateFilter) {
          options.where = {
             ...options.where,
-           date_creation: Like(likeFilter + '%')
+            date_creation: Like(likeFilter + '%'),
          }
-      }
-      else {
+      } else {
          options.where = {
             ...options.where,
-            date_solve: Like(likeFilter + '%')
+            date_solve: Like(likeFilter + '%'),
          }
       }
 
       const count = await this.allStatRepository.count(options)
       const data = await this.allStatRepository.find({
          ...options, order: {
-            date_creation: "DESC",
-         }
+            date_creation: 'DESC',
+         },
       })
       return {
          pageNum: dto.pageNum,
          pageSize: dto.pageSize,
          total: count,
-         data: data
+         data: data,
       } as ITicketDto
    }
 

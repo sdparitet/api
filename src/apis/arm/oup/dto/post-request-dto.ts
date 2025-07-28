@@ -14,6 +14,8 @@ export class OUP_PostBasicDto {
    readonly category: number
    readonly position: number
 }
+
+
 /**
  * @param {number} id
  * @param {number} groupId
@@ -30,6 +32,7 @@ export class OUP_EditPosDto {
    readonly groupId: number
    readonly name: string
 }
+
 
 /**
  * @param {number} id

@@ -9,6 +9,7 @@ export interface IRequestFilter {
    values: string[] | number[] | boolean
 }
 
+
 /**
  * @param {IRequestFilter[]} filters
  * @param {boolean} isDeleted
@@ -23,8 +24,8 @@ export class Stat_RequestTicketDto {
       this.pageSize = model.pageSize || 100
    }
 
-   readonly filters: IRequestFilter[];
-   readonly isDeleted: boolean;
-   readonly pageNum: number;
-   readonly pageSize: number;
+   readonly filters: IRequestFilter[]
+   readonly isDeleted: boolean
+   readonly pageNum: number
+   readonly pageSize: number
 }

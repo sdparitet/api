@@ -1,22 +1,23 @@
-import { HttpStatus, Injectable } from '@nestjs/common'
 import { InjectDataSource, InjectRepository } from '@nestjs/typeorm'
-import { FORMS_DB_CONNECTION, GLPI_DB_CONNECTION } from '~root/src/constants'
+import { HttpStatus, Injectable } from '@nestjs/common'
 import { DataSource, Repository } from 'typeorm'
 import { Response } from 'express'
-import { Form } from '~form/entity/form.entity'
-import { AnswerDto } from '~form/dto/post-request-dto'
-import { Template } from '~form/entity/template.entity'
-import { PayloadType } from '~form/types'
-import { GLPI } from '~root/src/connectors/glpi/glpi-api.connector'
-import { extend } from 'dayjs'
 import utc from 'dayjs/plugin/utc'
-import { ConditionCalculator } from '~utils/form/conditionCalculator'
-import { TagReplacer } from '~utils/form/tagReplacer'
-import { DataSourceReader } from '~utils/form/dataSourceReader'
-import { IBlock, OperatorsEnum, PropertiesEnum } from '~utils/form/types'
+import dayjs from 'dayjs'
+import { PayloadType } from '~t_forms/types'
+import { Form } from '~forms/entity/form.entity'
+import { GLPI } from '~c_glpi/glpi-api.connector'
+import { TagReplacer } from '~u_forms/tagReplacer'
+import { Template } from '~forms/entity/template.entity'
+import { GlpiApiWrapper } from '~c_glpi/glpi-api-wrapper'
+import { DataSourceReader } from '~u_forms/dataSourceReader'
+import { ConditionEvaluator } from '~u_forms/conditionEvaluator'
+import { AnswerDto, AnswerFilesDto } from '~forms/dto/post-request-dto'
+import { FORMS_DB_CONNECTION, GLPI_DB_CONNECTION } from '~src/constants'
+import { AnswerType, FieldDataEnum, IField, IFieldDataValue, SourceEnum } from '~t_u_forms/types'
 
 
-extend(utc)
+dayjs.extend(utc)
 
 
 @Injectable()
@@ -30,24 +31,9 @@ export class Form_Service {
    ) {
    }
 
-   async GlpiApiWrapper(username: string, res: Response, func: (glpi: GLPI) => void) {
-      const glpi = new GLPI(username, this.glpi)
-      await glpi.InitSession()
-
-      res.setHeader('Suspend-Reauth', 'true')
-      if (glpi.authorized) {
-         try {
-            func(glpi)
-         } catch (err: any) {
-            return res.status(HttpStatus.INTERNAL_SERVER_ERROR).send(err)
-         }
-      } else {
-         return res.status(HttpStatus.UNAUTHORIZED).json({ status: 'error', message: 'Could not login in GLPI' })
-      }
-   }
 
    async GetForms(username: string, res: Response, id?: number) {
-      await this.GlpiApiWrapper(username, res, async (glpi) => {
+      await GlpiApiWrapper(username, res, this.glpi, async (glpi) => {
          const userProfileId = glpi.sessionInfo.session.glpiactiveprofile.id
          if (id) {
             const form = await this.formRep.findOne({
@@ -78,12 +64,15 @@ export class Form_Service {
                } else res.status(HttpStatus.FORBIDDEN).json({})
             } else res.status(HttpStatus.NOT_FOUND).json({})
          } else {
-            const forms = await this.formRep.createQueryBuilder('form')
-            .select(['form.id', 'form.title', 'form.description', 'form.icon'])
-            .where(`(form.profiles @> :profileId OR form.profiles IS NULL)`,
+            const forms = await this.formRep.createQueryBuilder('forms')
+            .select(['forms.id', 'forms.title', 'forms.description', 'forms.icon'])
+            .where(`(forms.profiles @> :profileId OR forms.profiles IS NULL) AND forms.is_active = true`,
                { profileId: userProfileId })
-            .orderBy({ 'form.id': 'ASC' })
+            .orderBy({ 'forms.id': 'ASC' })
             .getMany()
+
+            console.log(forms.length)
+
 
             if (forms.length > 0) res.status(HttpStatus.OK).json(forms)
             else res.status(HttpStatus.NOT_FOUND).json([])
@@ -92,18 +81,19 @@ export class Form_Service {
    }
 
    async Answer(username: string, dto: AnswerDto, res: Response) {
-      await this.GlpiApiWrapper(username, res, async (glpi) => {
-         const form = await this.formRep.findOne({ where: { id: dto.form_id }, relations: ['templates'] })
+      await GlpiApiWrapper(username, res, this.glpi, async (glpi) => {
+         const form = await this.formRep.findOne({ where: { id: dto.formId }, relations: ['templates'] })
          if (!form || !form.templates) {
             return res.status(HttpStatus.BAD_REQUEST).json({ message: 'Form/templates not found' })
          }
 
-
          const validTemplates: Template[] = []
-         const conditionCalculator = new ConditionCalculator(dto.data)
+         const conditionCalculator = new ConditionEvaluator<AnswerType>(
+            (data, key) => data[key],
+         )
          form.templates.forEach(template => {
             if (template.conditions?.length > 0) {
-               const isValid = conditionCalculator.validate(template.conditions)
+               const isValid = conditionCalculator.validate(dto.data, template.conditions)
                if (isValid) validTemplates.push(template)
             } else {
                validTemplates.push(template)
@@ -119,17 +109,32 @@ export class Form_Service {
                payloads.push(replacedTemplate)
             }
 
-            res.status(HttpStatus.OK).json(payloads)
-            // await this.GlpiApiWrapper(username, res, async (_glpi: GLPI) => {
-            //    const ret = await _glpi.AddItems('Ticket', payloads)
-            //
-            //    if ([201, 207].includes(ret.status)) {
-            //       res.status(ret.status).json(ret.data)
-            //    } else {
-            //       res.status(ret.status).json({ id: ret.data[0], message: ret.data[1] })
-            //    }
-            // })
+            const ret = await glpi.AddItems('Ticket', payloads)
+
+            if ([201, 207].includes(ret.status)) {
+               res.status(ret.status).json(ret.data)
+            } else {
+               res.status(ret.status).json({ id: ret.data[0], message: ret.data[1] })
+            }
          } else res.status(HttpStatus.INTERNAL_SERVER_ERROR).json({ id: -1, message: 'Templates not found' })
+      })
+   }
+
+   async AnswerFiles(username: string, dto: AnswerFilesDto, files: Express.Multer.File[], res: Response) {
+      if (!dto.formId) return res.status(HttpStatus.BAD_REQUEST).json('Не указан номер формы')
+      if (!dto.ticketId) return res.status(HttpStatus.BAD_REQUEST).json('Не указан номер заявки')
+      if (!files || files?.length === 0) return res.status(HttpStatus.BAD_REQUEST).json('Не переданы файлы')
+
+      const form = await this.formRep.findOne({ where: { id: dto.formId } })
+      if (!form) {
+         return res.status(HttpStatus.BAD_REQUEST).json('Форма не найдена')
+      }
+
+
+      await GlpiApiWrapper(username, res, this.glpi, async (glpi) => {
+         const ret = await glpi.UploadTicketDocument(files, dto.ticketId)
+         console.log(ret)
+         res.status(ret.status).json({ id: ret.data[0].id })
       })
    }
 }

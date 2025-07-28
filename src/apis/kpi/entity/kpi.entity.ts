@@ -1,6 +1,6 @@
-import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Unique } from 'typeorm';
-import { KPI_Product } from '~kpi/entity/product.entity';
-import { KPI_DB_CONNECTION } from '~root/src/constants';
+import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, Unique } from 'typeorm'
+import { KPI_DB_CONNECTION } from '~src/constants'
+import { KPI_Product } from '~kpi/entity/product.entity'
 
 
 /**
@@ -14,18 +14,18 @@ import { KPI_DB_CONNECTION } from '~root/src/constants';
 export class KPI_Kpi {
 
    @PrimaryGeneratedColumn({ unsigned: true, zerofill: true })
-   id: number;
+   id: number
 
    @Column({ type: 'date', nullable: false })
-   date: string;
+   date: string
 
    @Column({ type: 'float', default: 0, nullable: true })
-   value: number;
+   value: number
 
    @ManyToOne(
       type => KPI_Product,
-      product => product.kpis
+      product => product.kpis,
    )
    @JoinColumn()
-   product: KPI_Product;
+   product: KPI_Product
 }

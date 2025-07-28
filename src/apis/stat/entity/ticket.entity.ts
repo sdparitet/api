@@ -1,5 +1,5 @@
-import { Column, Entity, UpdateDateColumn } from 'typeorm';
-import { STAT_DB_CONNECTION } from '~root/src/constants';
+import { Column, Entity, UpdateDateColumn } from 'typeorm'
+import { STAT_DB_CONNECTION } from '~src/constants'
 
 
 /**
@@ -11,27 +11,27 @@ import { STAT_DB_CONNECTION } from '~root/src/constants';
  * @param {number} last_log
  * @param {string} last_update
  */
-@Entity( 'stat_glpi_tickets',{ database: STAT_DB_CONNECTION } )
+@Entity('stat_glpi_tickets', { database: STAT_DB_CONNECTION })
 export class Stat_Ticket {
 
    @Column({ type: 'int', primary: true, unique: true, nullable: false, default: 0 })
-   id: number;
+   id: number
 
    @Column({ type: 'int', nullable: false, default: 0 })
-   status: number;
+   status: number
 
    @Column({ type: 'bigint', nullable: false, default: 0 })
-   reaction: number;
+   reaction: number
 
    @Column({ type: 'bigint', nullable: false, default: 0 })
-   solution: number;
+   solution: number
 
    @Column({ type: 'float', nullable: false, default: 0 })
-   cost: number;
+   cost: number
 
    @Column({ type: 'bigint', nullable: false, default: 0 })
-   last_log: number;
+   last_log: number
 
    @UpdateDateColumn({ type: 'timestamp', nullable: false, default: () => 'CURRENT_TIMESTAMP' })
-   last_update: string;
+   last_update: string
 }

@@ -1,5 +1,5 @@
 import { ManipulateType } from 'dayjs'
-import { ISearch } from '~connectors/glpi/types'
+import { ISearch } from '~t_c_glpi/types'
 
 
 /**
@@ -102,7 +102,7 @@ export enum LogicExpressionEnum {
  * @param {OperatorsEnum} operator
  */
 export interface ICondition {
-   leftValue: number
+   leftValue: number | string
    rightValue: number | string | null | RegExp
    operator: OperatorsEnum
 }
@@ -200,8 +200,8 @@ export enum SourceEnum {
 export interface IDataSource {
    source: SourceEnum
    item: string
-   filters?: ISearch
-   labelField: string
+   options?: ISearch
+   labelField: string | string[]
    valueField?: string
 }
 
