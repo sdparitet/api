@@ -11,7 +11,7 @@ import {
 } from '~src/constants'
 import { Oup_Module } from '~oup/oup.module'
 import { Arm_Module } from '~oit/oit.module'
-import { Ticket_Module } from '~tickets/ticket.module'
+import { TicketModule } from '~tickets/tickets.module'
 import { Form_Module } from '~forms/form.module'
 import { Kpi_Module } from '~kpi/kpi.module'
 import { LDAP_Module } from '~ldap/ldap.module'
@@ -112,7 +112,7 @@ import { TagReplacer } from '~u_forms/tagReplacer'
       Oup_Module,
       Arm_Module,
       Stat_Module,
-      Ticket_Module,
+      TicketModule,
       Form_Module,
    ],
 })

@@ -7,6 +7,13 @@ import {
    ITicketStatusesRights,
 } from '~t_c_glpi/types'
 
+/**
+ * @param {number} id
+ */
+export class IdDto {
+   @ApiProperty()
+   id: number
+}
 
 /**
  * @param {number} id
@@ -20,7 +27,6 @@ export class GetImagePreviewParams {
    username: string
 }
 
-
 /**
  * @param {number[]} id
  * @param {string} username
@@ -32,7 +38,6 @@ export class GetImagesPreviewParams {
    @ApiProperty()
    username: string
 }
-
 
 export class GetAgreementUserParams {
    @ApiProperty()

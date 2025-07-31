@@ -2,14 +2,12 @@ import { Injectable, HttpStatus } from '@nestjs/common'
 import { InjectDataSource } from '@nestjs/typeorm'
 import { DataSource } from 'typeorm'
 import { Response } from 'express'
-import { GLPI_DB_CONNECTION } from '~root/src/constants'
+import { GLPI_DB_CONNECTION } from '~src/constants'
 import {
    TicketChatResponse,
    TicketMembersResponse,
    RequestTicketIdAndUsernameDto,
-   RequestTicketIdDto,
    UserAccessOnTicket,
-   RequestUsernameDto,
    TicketFollowupDto,
    TicketsMembersResponse,
    GlpiUsersInGroupsResponse,
@@ -28,18 +26,18 @@ import {
    SetAgreementStatusRequest,
    GetAgreementInfoResponse,
    CreateAgreementRequest,
-   SetTicketCategoryRequest,
-} from '~glpi/dto/post-request-dto'
-import { GetAgreementUserParams, GetImagePreviewParams, GetImagesPreviewParams } from '~glpi/dto/get-request-dto'
-import { GLPI } from '~root/src/connectors/glpi/glpi-api.connector'
+   SetTicketCategoryRequest, RequestUsernameDto, RequestTicketIdDto,
+} from '~glpi/tickets/dto/post-request-dto'
+import { GetAgreementUserParams, GetImagePreviewParams, GetImagesPreviewParams } from '~glpi/tickets/dto/get-request-dto'
+import { GLPI } from '~c_glpi/glpi-api.connector'
 import { Sharp } from 'sharp'
 import sharp from 'sharp'
 import * as mime from 'mime-types'
-import { PayloadType } from '~connectors/glpi/types'
+import { PayloadType } from '~types/connectors/glpi/types'
 
 
 @Injectable()
-export class GLPI_Service {
+export class TicketService {
    constructor(
       @InjectDataSource(GLPI_DB_CONNECTION) private readonly glpi: DataSource,
    ) {
@@ -72,207 +70,6 @@ export class GLPI_Service {
    }
 
    // endregion
-
-   //region [ Ticket list ]
-   async GetUserTickets(dto: RequestUsernameDto, res: Response) {
-      await this.GlpiApiWrapper(dto.username, res, async (glpi: GLPI) => {
-         const ret = await this.glpi.query(`
-            select t.id
-                 , t.type
-                 , t.name
-                 , t.status
-                 , c.completename as category
-                 , t.date_creation
-                 , t.time_to_resolve
-            from glpi_tickets t
-                    left join glpi_itilcategories c
-                              on t.itilcategories_id = c.id
-                    left join glpi_tickets_users u
-                              on t.id = u.tickets_id
-            where t.is_deleted = 0
-              and u.type = 1
-              and u.users_id = ${glpi.userId};`)
-
-         if (ret) res.status(HttpStatus.OK).json(ret)
-         else res.status(HttpStatus.INTERNAL_SERVER_ERROR).json([])
-      })
-   }
-
-   async GetUserAssignTickets(dto: RequestUsernameDto, res: Response) {
-      await this.GlpiApiWrapper(dto.username, res, async (glpi: GLPI) => {
-         const ret = await this.glpi.query(`
-            select t.id
-                 , t.type
-                 , t.name
-                 , t.status
-                 , c.completename as category
-                 , t.date_creation
-                 , t.time_to_resolve
-            from glpi_tickets t
-                    left join glpi_itilcategories c
-                              on t.itilcategories_id = c.id
-                    left join glpi_tickets_users u
-                              on t.id = u.tickets_id
-            where t.is_deleted = 0
-              and u.type = 2
-              and u.users_id = ${glpi.userId};`)
-
-         if (ret) res.status(HttpStatus.OK).json(ret)
-         else res.status(HttpStatus.BAD_REQUEST)
-      })
-   }
-
-   async GetUserAgreementsTickets(dto: RequestUsernameDto, res: Response) {
-      await this.GlpiApiWrapper(dto.username, res, async (glpi: GLPI) => {
-         const ret = await this.glpi.query(`
-            select t.id
-                 , t.type
-                 , t.name
-                 , t.status
-                 , c.completename as category
-                 , t.date_creation
-                 , t.time_to_resolve
-                 , sub.need_agreement
-            from (select tickets_id,
-                         if(max(status = 2), 1, 0) as need_agreement
-                  from (glpi_ticketvalidations)
-                  where users_id_validate = ${glpi.userId}
-                  group by tickets_id) as sub
-                    left join glpi_tickets t
-                              on sub.tickets_id = t.id
-                    left join glpi_itilcategories c
-                              on t.itilcategories_id = c.id
-            where t.is_deleted = 0;`)
-
-         if (ret) res.status(HttpStatus.OK).json(ret)
-         else res.status(HttpStatus.BAD_REQUEST)
-      })
-   }
-
-   async GetUserGroupsTickets(dto: RequestUsernameDto, res: Response) {
-      await this.GlpiApiWrapper(dto.username, res, async (glpi: GLPI) => {
-         const ret = await this.glpi.query(`
-            select t.id
-                 , t.type
-                 , t.name
-                 , t.status
-                 , c.completename as category
-                 , t.date_creation
-                 , t.time_to_resolve
-            from glpi_tickets t
-                    left join glpi.glpi_itilcategories c on t.itilcategories_id = c.id
-            where t.id in (select tickets_id
-                           from glpi_groups_tickets
-                           where groups_id in (select groups_id from glpi_groups_users where users_id = ${glpi.userId}))
-              and is_deleted = 0
-            order by t.id desc;`)
-
-         if (ret) res.status(HttpStatus.OK).json(ret)
-         else res.status(HttpStatus.BAD_REQUEST)
-      })
-   }
-
-   async GetCultureTickets(dto: RequestUsernameDto, res: Response) {
-      await this.GlpiApiWrapper(dto.username, res, async (glpi: GLPI) => {
-         const ret = await this.glpi.query(`
-            select t.id
-                 , t.type
-                 , t.name
-                 , t.status
-                 , c.completename as category
-                 , t.date_creation
-                 , t.time_to_resolve
-                 , 2              as need_agreement
-            from glpi_tickets t
-                    left join glpi.glpi_itilcategories c on t.itilcategories_id = c.id
-            where t.itilcategories_id in
-                  (select id from glpi_itilcategories where completename like 'Культура производства%')
-              and t.id in (select tickets_id
-                           from glpi_tickets_users tu
-                           where tu.users_id = ${glpi.userId}
-                             and tu.type = 2)
-              and is_deleted = 0
-            union
-            select t.id
-                 , t.type
-                 , t.name
-                 , t.status
-                 , c.completename as category
-                 , t.date_creation
-                 , t.time_to_resolve
-                 , 3
-            from glpi_tickets t
-                    left join glpi.glpi_itilcategories c on t.itilcategories_id = c.id
-            where t.itilcategories_id in
-                  (select id from glpi_itilcategories where completename like 'Культура производства%')
-              and t.id in (select tickets_id
-                           from glpi_groups_tickets gt
-                           where
-                              gt.groups_id in (select groups_id from glpi_groups_users where users_id = ${glpi.userId})
-                             and gt.type = 2)
-              and is_deleted = 0
-            union
-            select t.id
-                 , t.type
-                 , t.name
-                 , t.status
-                 , c.completename as category
-                 , t.date_creation
-                 , t.time_to_resolve
-                 , sub.need_agreement
-            from (select tickets_id,
-                         if(max(status = 2), 1, 0) as need_agreement
-                  from glpi_ticketvalidations
-                  where users_id_validate = ${glpi.userId}
-                  group by tickets_id) as sub
-                    left join glpi_tickets t
-                              on sub.tickets_id = t.id
-                    left join glpi_itilcategories c
-                              on t.itilcategories_id = c.id
-            where t.is_deleted = 0
-              and t.itilcategories_id in
-                  (select id from glpi_itilcategories where completename like 'Культура производства%');`)
-
-         if (ret) res.status(HttpStatus.OK).json(ret)
-         else res.status(HttpStatus.BAD_REQUEST)
-      })
-   }
-
-   async GetTicketsMembers(dto: GetTicketsMembersRequest, res: Response) {
-      await this.RequestWrapper(res, async () => {
-         if (dto.tickets && dto.tickets.length > 0) {
-            const ret: TicketsMembersResponse[] = await this.glpi.query(`
-               select *
-               from (select t.id                                 as ticket_id
-                          , u.id
-                          , CONCAT(u.realname, ' ', u.firstname) as name
-                          , 1                                    as memberType
-                          , tu.type                              as accessoryType
-                     from glpi_tickets t
-                             inner join glpi_tickets_users tu on t.id = tu.tickets_id
-                             left join glpi_users u on tu.users_id = u.id
-                     union
-                     select t.id    as ticket_id
-                          , g.id
-                          , g.name
-                          , 2       as memberType
-                          , tg.type as accessoryType
-                     from glpi_tickets t
-                             inner join glpi_groups_tickets tg on t.id = tg.tickets_id
-                             left join glpi_groups g on tg.groups_id = g.id) as data
-               where data.ticket_id in (${dto.tickets.join(',')})`)
-
-
-            if (ret) res.status(HttpStatus.OK).json(ret)
-            else res.status(HttpStatus.BAD_REQUEST).json([])
-         } else {
-            res.status(HttpStatus.OK).json([])
-         }
-      })
-   }
-
-   // endregion
-
    //region [ Ticket info ]
    async GetProfile({ username }, res: Response) {
       await this.GlpiApiWrapper(username, res, async (glpi) => {

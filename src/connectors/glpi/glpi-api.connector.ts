@@ -1,18 +1,20 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios'
+import { HttpStatus } from '@nestjs/common'
 import { DataSource } from 'typeorm'
+import * as https from 'node:https'
+import * as http from 'node:http'
+import { Helper } from '~c_glpi/helper'
 import {
-   CriteriaType,
+   ContentRange,
+   ICriteriaType,
    GlpiApiInitResponse,
    GlpiApiResponse,
    IGlpiSession,
    ISearch,
    PayloadType,
-} from '~connectors/glpi/types'
-import { HttpStatus } from '@nestjs/common'
-import * as http from 'node:http'
-import * as https from 'node:https'
-import { Helper } from '~connectors/glpi/helper'
-import { Cache } from 'cache-manager'
+} from '~t_c_glpi/types'
+import { ApiProperty } from '@nestjs/swagger'
+import { UrgencyEnum } from '~t_tickets/ticket-model'
 
 
 export class GLPI {
@@ -66,7 +68,7 @@ export class GLPI {
    private async _Login(token: string): Promise<GlpiApiInitResponse> {
       try {
          const { status, data } = await this.session.get('initSession', {
-            headers: { 'Authorization': `user_token ${token}` },
+            headers: { 'Authorization': `user_token ${token}`, 'Cache-Control': 'no-cache' },
             params: { get_full_session: true },
          })
 
@@ -105,24 +107,6 @@ export class GLPI {
       return this.session.get('killSession')
    }
 
-   async GetUserProfile(asUser: string = this._username, sessionInfo: IGlpiSession = this.sessionInfo) {
-      if (asUser !== this._username) {
-         const token = await this._GetUserToken(asUser)
-         if (token) {
-            const { status, data } = await this._Login(token)
-            if (status === HttpStatus.OK) {
-               sessionInfo = data
-            } else {
-               return null
-            }
-         } else {
-            return null
-         }
-      }
-      const helper = new Helper(sessionInfo)
-      return { glpiId: this.userId, profile: { ...await helper.getProfile() } }
-   }
-
    async GetUserRights(asUser: string = this._username, sessionInfo: IGlpiSession = this.sessionInfo) {
       if (asUser !== this._username) {
          const token = await this._GetUserToken(asUser)
@@ -146,14 +130,14 @@ export class GLPI {
 
    private async _HandleRequest<T>(request: Promise<AxiosResponse<T>>, retries: number = 3): Promise<GlpiApiResponse> {
       try {
-         const { status, data } = await request
-         return { status, data }
+         const { status, data, headers, request: r } = await request
+         return { status, data, headers }
       } catch (err) {
          if (retries > 0) {
             console.log(err)
             return this._HandleRequest(request, retries - 1)
          } else {
-            return { status: HttpStatus.INTERNAL_SERVER_ERROR, data: err }
+            return { status: HttpStatus.INTERNAL_SERVER_ERROR, data: err, headers: {} }
          }
       }
    }
@@ -163,36 +147,24 @@ export class GLPI {
    }
 
    async GetAllItems(itemType: string, params: PayloadType = {}): Promise<GlpiApiResponse> {
-      const allData = []
-      let left = 0
-      const step = 200
+      const { status, data, headers } = await this._HandleRequest(this.session.get(itemType, { params: params }))
 
-      while (true) {
-         const right = left + step - 1
-         const { status, data, headers } = await this.session.get(itemType, {
-            params: { ...params, 'range': `${left}-${right}` },
-         })
-
-         if (status === HttpStatus.UNAUTHORIZED) {
-            return { status, data }
+      if (status === HttpStatus.PARTIAL_CONTENT) {
+         const contentRangeHeader = headers['content-range'] || headers['Content-Range']
+         const { data: _data, rawData } = await this._PartialReader(itemType, params, data, contentRangeHeader)
+         return {
+            status: HttpStatus.OK,
+            data: _data,
+            rawData: _data,
          }
-
-         allData.push(...data)
-
-         if (status === 206) {
-            const [range, total] = headers['content-range'].split('/')
-            const [, end] = range.split('-')
-            left = parseInt(end) + 1
-            if (left >= total) break
-         } else break
+      } else {
+         return { status, data }
       }
-
-      return { status: HttpStatus.OK, data: allData }
    }
 
    async GetUserId(username: string): Promise<number> {
       const criteria: ISearch = {
-         criteria: [{ field: 1, searchtype: 'contains', value: `^${username}$` }],
+         filters: [{ field: 1, searchtype: 'contains', value: `^${username}$` }],
          forcedisplay: [2],
       }
 
@@ -202,7 +174,7 @@ export class GLPI {
 
    async GetUserFio(username: string): Promise<string> {
       const criteria: ISearch = {
-         criteria: [{ field: 1, searchtype: 'contains', value: `^${username}$` }],
+         filters: [{ field: 1, searchtype: 'contains', value: `^${username}$` }],
          forcedisplay: [1, 34, 9],
       }
 
@@ -213,35 +185,159 @@ export class GLPI {
       return `${user[34] || ''} ${user[9] || ''}`.trim()
    }
 
-   private async _AddCriteria(criteria: CriteriaType[], parent: string = ''): Promise<object[]> {
-      const _criteria = []
+   async GetUserProfile(asUser: string = this._username, sessionInfo: IGlpiSession = this.sessionInfo) {
+      if (asUser !== this._username) {
+         const token = await this._GetUserToken(asUser)
+         if (token) {
+            const { status, data } = await this._Login(token)
+            if (status === HttpStatus.OK) {
+               sessionInfo = data
+            } else {
+               return null
+            }
+         } else {
+            return null
+         }
+      }
+      const helper = new Helper(sessionInfo)
+      return { glpiId: this.userId, profile: { ...await helper.getProfile() } }
+   }
+
+   private async _AddCriteria(criteria: ICriteriaType[], parent: string = ''): Promise<Record<string, any>> {
+      const _criteria = {}
       const prefix = parent ? `${parent}[criteria]` : 'criteria'
 
       for (const [index, criterion] of criteria.entries()) {
          if (criterion.criteria) {
-            _criteria.push({ [`${prefix}[${index}][link]`]: criterion.link || 'AND' })
-            _criteria.push(...await this._AddCriteria(criterion.criteria, `criteria[${index}]`))
+            _criteria[`${prefix}[${index}][link]`] = criterion.link || 'AND'
+            Object.assign(_criteria, await this._AddCriteria(criterion.criteria, `criteria[${index}]`))
          } else {
-            if (criterion.link) _criteria.push({ [`${prefix}[${index}][link]`]: criterion.link })
-            _criteria.push({ [`${prefix}[${index}][field]`]: criterion.field })
-            _criteria.push({ [`${prefix}[${index}][searchtype]`]: criterion.searchtype })
-            _criteria.push({ [`${prefix}[${index}][value]`]: criterion.value })
+            if (criterion.link) _criteria[`${prefix}[${index}][link]`] = criterion.link
+            if (criterion.meta) _criteria[`${prefix}[${index}][meta]`] = criterion.meta
+            if (criterion.itemType) _criteria[`${prefix}[${index}][itemtype]`] = criterion.itemType
+            _criteria[`${prefix}[${index}][field]`] = criterion.field
+            _criteria[`${prefix}[${index}][searchtype]`] = criterion.searchtype
+            _criteria[`${prefix}[${index}][value]`] = criterion.value
          }
       }
 
       return _criteria
    }
 
+   async _ParseContentRange(header: string): Promise<ContentRange> {
+      const match = header.match(/^(\d+)-(\d+)\/(\d+)$/)
+      if (!match) throw new RangeError(`Unsupported range: ${match}`)
+
+      const start = parseInt(match[1], 10)
+      const end = parseInt(match[2], 10)
+      const total = parseInt(match[3], 10)
+
+      return { start, end, total }
+   }
+
+   async _PartialReader(itemType: string, params: PayloadType, data: any, contentRangeHeader: string) {
+      const { end: initEndRange, total } = await this._ParseContentRange(contentRangeHeader)
+
+      let allData: any[] = []
+      let allRawData: any[] = []
+      if (Array.isArray(data)) allData = [...data]
+      else if (data && Array.isArray(data['data'])) allData = [...data['data']]
+      else throw new Error('Invalid format of initial response data')
+
+      allRawData = data.rawdata?.data?.rows ?? []
+
+      let offset = initEndRange + 1
+      const step = 200
+      const upperBound = () => (offset + step - 1) >= total - 1 ? total - 1 : offset + step - 1
+
+      while (offset < total) {
+         const range = `${offset}-${upperBound()}`
+         const {
+            status: _status,
+            data: _data,
+            headers: _headers,
+         } = await this._HandleRequest(this.session.get(itemType, {
+            params: { ...params, range: range },
+         }))
+
+         if(![HttpStatus.OK, HttpStatus.PARTIAL_CONTENT].includes(_status)) {
+         }
+
+         if (![HttpStatus.OK, HttpStatus.PARTIAL_CONTENT].includes(_status)) throw new Error(`Fetching partial content failed`)
+         let chunk = []
+
+         if (Array.isArray(_data)) chunk = _data
+         else if (_data && _data['data']) chunk = _data['data']
+         else {
+            throw new Error('Invalid format of response during pagination')
+         }
+
+         allData.push(...chunk)
+         allRawData.push(...data.rawdata?.data?.rows ?? [])
+
+         const _contentRangeHeader = _headers['content-range'] || _headers['Content-Range']
+         if (!_contentRangeHeader) break
+
+         const { end } = await this._ParseContentRange(_contentRangeHeader)
+         offset = end + 1
+      }
+      return { data: allData, rawData: allRawData }
+   }
+
+   async ListSearchOptions(itemType: string) {
+      return this._HandleRequest(this.session.get('listSearchOptions/' + itemType))
+   }
+
    async Search(itemType: string, searchData: ISearch): Promise<GlpiApiResponse> {
-      const rawParams = []
+      const params: PayloadType = {}
 
-      if (searchData.sort) rawParams.push({ sort: searchData.sort })
-      if (searchData.order) rawParams.push({ order: searchData.order })
-      if (searchData.criteria) rawParams.push(...await this._AddCriteria(searchData.criteria))
-      if (searchData.forcedisplay) rawParams.push(...searchData.forcedisplay.map((fieldId, index) => ({ [`forcedisplay[${index}]`]: fieldId })))
+      if (searchData.sort) {
+         const { status, data } = await this.ListSearchOptions(itemType)
+         if (status === HttpStatus.OK) {
+            let found = false
+            for (const [key, value] of Object.entries(data)) {
+               if (value['uid'] === `${itemType}.${searchData.sort}`) {
+                  params['sort'] = key
+                  found = true
+                  break
+               }
+            }
+            if (!found) {
+               params['sort'] = 2  // ID-field number
+            }
+         } else params['sort'] = 2  // ID-field number
+      }
+      if (searchData.order) params['order'] = searchData.order
+      if (searchData.range) params['range'] = searchData.range
+      if (searchData.rawdata) params['rawdata'] = searchData.rawdata
+      if (searchData.filters) Object.assign(params, await this._AddCriteria(searchData.filters))
+      if (Object.prototype.hasOwnProperty.call(searchData, 'uid_cols')) params['uid_cols'] = searchData.uid_cols
+      if (Object.prototype.hasOwnProperty.call(searchData, 'get_hateoas')) params['get_hateoas'] = searchData.get_hateoas
+      if (searchData.forcedisplay) {
+         searchData.forcedisplay.forEach((field, index) => {
+            params[`forcedisplay[${index}]`] = field
+         })
+      }
 
-      const params = new URLSearchParams(Object.assign({}, ...rawParams)).toString()
-      return this._HandleRequest(this.session.get(`search/${itemType}?${params}`))
+      const {
+         status,
+         data,
+         headers,
+      } = await this._HandleRequest(this.session.get(`search/${itemType}`, { params: params }))
+
+
+      if (status === HttpStatus.PARTIAL_CONTENT) {
+         const contentRangeHeader = headers['content-range'] || headers['Content-Range']
+         const {
+            data: _data,
+            rawData,
+         } = await this._PartialReader(`search/${itemType}`, params, data, contentRangeHeader)
+         return { status: HttpStatus.OK, data: _data, rawData: rawData }
+      } else {
+         const rawData = searchData.rawdata ? data.rawdata?.data?.rows ?? [] : []
+         const formatedData = Array.isArray(data) ? data : data.data && Array.isArray(data.data) ? data.data : [data.data]
+         return { status, data: formatedData, rawData }
+      }
    }
 
    async AddItems(itemType: string, payload: PayloadType | PayloadType[], retries: number = 3): Promise<GlpiApiResponse> {
@@ -268,7 +364,7 @@ export class GLPI {
 
    async SwitchTicketNotification(ticketId: number, state: 0 | 1): Promise<GlpiApiResponse> {
       const criteria: ISearch = {
-         criteria: [
+         filters: [
             { field: 3, searchtype: 'equals', value: ticketId },
             { link: 'AND', field: 4, searchtype: 'equals', value: this.userId },
          ],
@@ -305,7 +401,7 @@ export class GLPI {
       })
 
       const headers = {
-         'Content-Type': 'multipart/form-data',
+         'Content-Type': 'multipart/forms-data',
          ...form.getHeaders(),
       }
 
@@ -313,19 +409,30 @@ export class GLPI {
    }
 
    async UploadTicketDocument(files: Express.Multer.File[], ticketId: number, asUser: string | null = null) {
-      const { status, data } = await this.UploadDocument(files)
       const userId = asUser ? await this.GetUserId(asUser) : this.userId
 
-      const payload: PayloadType[] = data.map((file: any) => ({
-         documents_id: file.id,
-         itemtype: 'Ticket',
-         items_id: ticketId,
-         users_id: userId,
-      }))
+      const { status, data } = await this.UploadDocument(files)
 
-      await this.AddItems('Document_Item', payload)
+      if ([HttpStatus.CREATED, HttpStatus.MULTI_STATUS].includes(status)) {
+         if (typeof data === 'string') return {
+            status: HttpStatus.INTERNAL_SERVER_ERROR,
+            ticketId,
+            data: 'Ошибка создания файла',
+         }
+         else {
+            const payload: PayloadType[] = data.map((file: any) => ({
+               documents_id: file.id,
+               itemtype: 'Ticket',
+               items_id: ticketId,
+               users_id: userId,
+            }))
 
-      return { status, ticket_id: ticketId, data }
+            const { status: _status, data: _data } = await this.AddItems('Document_Item', payload)
+            return { status: _status, ticketId: ticketId, data: _data }
+         }
+
+
+      } else return { status, ticketId, data }
    }
 
    async DownloadDocument(docId: number) {
@@ -350,3 +457,4 @@ export class GLPI {
       return this._HandleRequest(this.session.get(`User/${userId}/Picture`))
    }
 }
+

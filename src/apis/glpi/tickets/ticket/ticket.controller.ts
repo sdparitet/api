@@ -8,7 +8,7 @@ import { Portal_Roles } from '~roles/portal.roles'
 import { GLPI_DB_CONNECTION } from '~src/constants'
 import { Username } from '~decorators/jwt.username'
 import { Roles } from '~guards/roles-auth.decorator'
-import { Ticket_Service } from '~tickets/ticket.service'
+import { TicketService } from '~tickets/ticket/ticket.service'
 import {
    GetAgreementUserParams,
    GetImagesPreviewParams,
@@ -25,15 +25,12 @@ import {
    ChangeTicketStatusRequest,
    GlpiUsersInGroupsResponse,
    SetAgreementStatusRequest,
-   GetTicketsMembersRequest,
    GetAgreementInfoResponse,
    SetTicketCategoryRequest,
-   AgreementTicketsResponse,
    CreateAgreementRequest,
    TicketMembersResponse,
    CreateSolutionRequest,
    SolutionAnswerRequest,
-   UserTicketsResponse,
    GetSolutionResponse,
    SetTaskStateRequest,
    TicketInfoResponse,
@@ -51,69 +48,11 @@ import {
 
 @ApiTags(GLPI_DB_CONNECTION)
 @Controller('glpi')
-export class Ticket_Controller {
+export class TicketController {
    constructor(
-      private glpiService: Ticket_Service,
+      private glpiService: TicketService,
    ) {
    }
-
-   //region [ Ticket list ]
-   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
-   @Post('/GetUserTickets')
-   @Header('content-type', 'application/json')
-   @ApiBody({ required: false, type: RequestUsernameDto })
-   @ApiResponse({ type: [UserTicketsResponse] })
-   gut(@Body() dto: RequestUsernameDto, @Res() res: Response) {
-      return this.glpiService.GetUserTickets(dto, res)
-   }
-
-   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
-   @Post('/GetUserAssignTickets')
-   @Header('content-type', 'application/json')
-   @ApiBody({ required: false, type: RequestUsernameDto })
-   @ApiResponse({ type: [UserTicketsResponse] })
-   guat(@Body() dto: RequestUsernameDto, @Res() res: Response) {
-      return this.glpiService.GetUserAssignTickets(dto, res)
-   }
-
-   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
-   @Post('/GetUserAgreementsTickets')
-   @Header('content-type', 'application/json')
-   @ApiBody({ required: false, type: RequestUsernameDto })
-   @ApiResponse({ type: [AgreementTicketsResponse] })
-   guagt(@Body() dto: RequestUsernameDto, @Res() res: Response) {
-      return this.glpiService.GetUserAgreementsTickets(dto, res)
-   }
-
-   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
-   @Post('/GetUserGroupsTickets')
-   @Header('content-type', 'application/json')
-   @ApiBody({ required: false, type: RequestUsernameDto })
-   @ApiResponse({ type: [AgreementTicketsResponse] })
-   gugt(@Body() dto: RequestUsernameDto, @Res() res: Response) {
-      return this.glpiService.GetUserGroupsTickets(dto, res)
-   }
-
-   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
-   @Post('/GetCultureTickets')
-   @Header('content-type', 'application/json')
-   @ApiBody({ required: false, type: RequestUsernameDto })
-   @ApiResponse({ type: [AgreementTicketsResponse] })
-   gct(@Body() dto: RequestUsernameDto, @Res() res: Response) {
-      return this.glpiService.GetCultureTickets(dto, res)
-   }
-
-   @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
-   @Post('/GetTicketsMembers')
-   @Header('content-type', 'application/json')
-   @ApiBody({ required: true, type: RequestUsernameDto })
-   @ApiResponse({ type: [GetTicketsMembersRequest] })
-   gtm(@Body() dto: GetTicketsMembersRequest, @Res() res: Response) {
-      return this.glpiService.GetTicketsMembers(dto, res)
-   }
-
-   // endregion
-
    //region [ Ticket info ]
    @Roles(GLPI_Roles.GLPI_DATA, Portal_Roles.PORTAL_USERS, ...Object.values(GlobalRoles))
    @Post('/GetUserAccessOnTicket')
@@ -340,7 +279,7 @@ export class Ticket_Controller {
    @Header('content-type', 'application/json')
    @ApiBody({ required: true, type: TicketFollowupDto })
    @ApiResponse({ type: [CreateTicketFollowupResponse] })
-   ctf(@Username() username: string, @Body() dto: TicketFollowupDto, @Res() res: Response) {
+   ctf(@Body() dto: TicketFollowupDto, @Res() res: Response) {
       return this.glpiService.CreateTicketFollowup(dto, res)
    }
 
@@ -349,7 +288,7 @@ export class Ticket_Controller {
    @Header('content-type', 'application/json')
    @ApiBody({ required: true, type: RequestTicketIdAndUsernameAndStateDto })
    // @ApiResponse({type: [TicketFollowupsResponse]})
-   stf(@Username() username: string, @Body() dto: RequestTicketIdAndUsernameAndStateDto, @Res() res: Response) {
+   stf(@Body() dto: RequestTicketIdAndUsernameAndStateDto, @Res() res: Response) {
       return this.glpiService.SwitchTicketNotifications(dto, res)
    }
 
@@ -358,7 +297,7 @@ export class Ticket_Controller {
    @ApiBody({ required: true, type: RequestTicketIdAndUsernameDto })
    @ApiResponse({ type: [UploadTicketDocumentResponse] })
    @UseInterceptors(FilesInterceptor('files', 100, { limits: { fileSize: 1024 * 1024 * 80 } }))
-   ud(@Username() username: string, @UploadedFiles() files: Express.Multer.File[], @Body() dto: RequestTicketIdAndUsernameDto, @Res() res: Response) {
+   ud(@UploadedFiles() files: Express.Multer.File[], @Body() dto: RequestTicketIdAndUsernameDto, @Res() res: Response) {
       return this.glpiService.UploadTicketDocument(files, dto, res)
    }
 
@@ -366,7 +305,7 @@ export class Ticket_Controller {
    @Post('/DownloadDocument')
    @Header('content-type', 'application/octet-stream')
    @ApiBody({ required: true, type: RequestTicketIdAndUsernameDto })
-   dd(@Username() username: string, @Body() dto: RequestTicketIdAndUsernameDto, @Res() res: Response) {
+   dd(@Body() dto: RequestTicketIdAndUsernameDto, @Res() res: Response) {
       return this.glpiService.DownloadDocument(dto, res)
    }
 
@@ -374,7 +313,7 @@ export class Ticket_Controller {
    @Get('/GetImagePreview')
    @Header('content-type', 'application/json; charset=utf-8')
    @ApiResponse({ type: [ResponseGetImagePreviewResponse] })
-   gip(@Username() username: string, @Query() params: GetImagePreviewParams, @Res() res: Response) {
+   gip(@Query() params: GetImagePreviewParams, @Res() res: Response) {
       return this.glpiService.GetImagePreview(params, res)
    }
 
@@ -382,7 +321,7 @@ export class Ticket_Controller {
    @Get('/GetImagesPreview')
    @Header('content-type', 'application/json; charset=utf-8')
    @ApiResponse({ type: [GetImagesPreviewParams] })
-   gisp(@Username() username: string, @Query() params: GetImagesPreviewParams, @Res() res: Response) {
+   gisp(@Query() params: GetImagesPreviewParams, @Res() res: Response) {
       return this.glpiService.GetImagesPreview(params, res)
    }
 

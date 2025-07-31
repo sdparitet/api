@@ -1,4 +1,5 @@
 import { ICondition, IConditionGroup } from '~t_u_forms/types'
+import { TicketFieldEnum } from '~t_tickets/ticket-model'
 
 
 // region [ GLPI API ]
@@ -35,6 +36,7 @@ export interface IGlpiSession {
          followup: number
          task: number
       }
+      glpigroups: number[]
    }
 }
 
@@ -66,6 +68,7 @@ export interface ISearch {
    uid_cols?: boolean
    get_hateoas?: boolean
    range?: string
+   rawdata?: boolean
 }
 
 
@@ -77,14 +80,18 @@ export interface IPostFilter {
 
 export interface ICriteriaType {
    link?: 'AND' | 'OR'
+   meta?: boolean
+   itemType?: string
    field?: number
-   searchtype?: 'contains' | 'equals' | 'equal' | 'notequals' | 'lessthan' | 'morethan' | 'under' | 'notunder'
+   searchtype?: 'contains' | 'equals' | 'equal' | 'notequals' | 'lessthan' | 'morethan' | 'under' | 'notunder'  //ToDo Make enum
    value?: string | number
    criteria?: ICriteriaType[]
 }
 
+// ToDo привязать GlpiApiResponseData к GlpiApiResponse.data
+export type GlpiApiResponseData = Record<string, string[] | number | number[] | string | null>[]
 
-export type GlpiApiResponse = { status: number, data: any, headers?: any }
+export type GlpiApiResponse = { status: number, data: any, headers?: any, rawData?: any[] }
 export type GlpiApiInitResponse = { status: number, data: IGlpiSession }
 
 

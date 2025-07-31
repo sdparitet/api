@@ -9,12 +9,12 @@ import { Form } from '~forms/entity/form.entity'
 import { GLPI } from '~c_glpi/glpi-api.connector'
 import { TagReplacer } from '~u_forms/tagReplacer'
 import { Template } from '~forms/entity/template.entity'
-import { GlpiApiWrapper } from '~c_glpi/glpi-api-wrapper'
+import { GlpiWrapper } from '~c_glpi/request-wrappers'
 import { DataSourceReader } from '~u_forms/dataSourceReader'
 import { ConditionEvaluator } from '~u_forms/conditionEvaluator'
 import { AnswerDto, AnswerFilesDto } from '~forms/dto/post-request-dto'
 import { FORMS_DB_CONNECTION, GLPI_DB_CONNECTION } from '~src/constants'
-import { AnswerType, FieldDataEnum, IField, IFieldDataValue, SourceEnum } from '~t_u_forms/types'
+import { AnswerType } from '~t_u_forms/types'
 
 
 dayjs.extend(utc)
@@ -33,7 +33,7 @@ export class Form_Service {
 
 
    async GetForms(username: string, res: Response, id?: number) {
-      await GlpiApiWrapper(username, res, this.glpi, async (glpi) => {
+      await GlpiWrapper(username, res, this.glpi, async (glpi) => {
          const userProfileId = glpi.sessionInfo.session.glpiactiveprofile.id
          if (id) {
             const form = await this.formRep.findOne({
@@ -81,7 +81,7 @@ export class Form_Service {
    }
 
    async Answer(username: string, dto: AnswerDto, res: Response) {
-      await GlpiApiWrapper(username, res, this.glpi, async (glpi) => {
+      await GlpiWrapper(username, res, this.glpi, async (glpi) => {
          const form = await this.formRep.findOne({ where: { id: dto.formId }, relations: ['templates'] })
          if (!form || !form.templates) {
             return res.status(HttpStatus.BAD_REQUEST).json({ message: 'Form/templates not found' })
@@ -131,7 +131,7 @@ export class Form_Service {
       }
 
 
-      await GlpiApiWrapper(username, res, this.glpi, async (glpi) => {
+      await GlpiWrapper(username, res, this.glpi, async (glpi) => {
          const ret = await glpi.UploadTicketDocument(files, dto.ticketId)
          console.log(ret)
          res.status(ret.status).json({ id: ret.data[0].id })

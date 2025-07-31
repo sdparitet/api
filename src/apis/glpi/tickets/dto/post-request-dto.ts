@@ -3,9 +3,8 @@ import {
    AccessoryTypeEnum,
    ChatItemTypeEnum,
    MemberTypeEnum,
-   RequestTypeEnum,
-   StatusEnum,
 } from '~t_tickets/types'
+import { StatusEnum, TypeEnum } from '~t_tickets/ticket-model'
 
 
 /**region [ Global ] */
@@ -40,6 +39,7 @@ export class RequestTicketIdAndUsernameDto {
 }
 
 
+
 export class DefaultResponse {
    @ApiProperty()
    id: number
@@ -51,14 +51,27 @@ export class DefaultResponse {
 
 // endregion
 
+
 /**region [ Ticket list ] */
+
+
 /**region [ Requests ] */
+/**
+ * @param {number[]} users
+ * @param {number[]} groups
+ */
+export class GetTicketsMembersRequestDto {
+   @ApiProperty()
+   users: number[]
+
+   @ApiProperty()
+   groups: number[]
+}
+
 export class GetTicketsMembersRequest {
    @ApiProperty()
    tickets: number[]
 }
-
-
 // endregion
 
 /**region [ Response ] */
@@ -76,7 +89,7 @@ export class UserTicketsResponse {
    id: number
 
    @ApiProperty({ description: '1 - инцидент, 2 - запрос', enum: [1, 2] })
-   type: RequestTypeEnum
+   type: TypeEnum
 
    @ApiProperty()
    name: string
@@ -344,14 +357,11 @@ export class TicketInfoResponse {
    @ApiProperty()
    name: string
 
-   @ApiProperty({
-      description: '1 - новая, 2 - в работе, 3 - запланирована, 4 - в ожидании, 5 - решена, 6 - закрыта',
-      enum: [1, 2, 3, 4, 5, 6],
-   })
+   @ApiProperty()
    status: StatusEnum
 
-   @ApiProperty({ description: '1 - инцидент, 2 - запрос', enum: [1, 2] })
-   type: RequestTypeEnum
+   @ApiProperty()
+   type: TypeEnum
 
    @ApiProperty()
    category: string
